@@ -1,5 +1,5 @@
 from keras.models import Sequential, 
-from keras.layers import Conv1D, Dropout, MaxPooling1D, Dense, LSTM, 
+from keras.layers import Conv1D, Dropout, MaxPooling1D, Dense, Add, LSTM, 
 
 class csclassifier:
     def __init__(self):
@@ -38,11 +38,13 @@ class csclassifier:
             padding='same'
             activation='relu'))
 
-        # Add z (the residual network layer)
-        self.model.add(Dense
-
         # Adding y (max-pooling across time)
         self.model.add(MaxPooling1D(pool_size=1, padding='same'))
+
+        # Add f_r(y) 
+        self.model.add(Dense(3 * self.n_2, activation='relu'))
+        # TODO: Complete z = y + f_r(y) (currently it's only f_r(y)
+
 
 
         pass
