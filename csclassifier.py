@@ -1,19 +1,27 @@
-from keras.models import Sequential, 
-from keras.layers import Conv1D, Dropout, MaxPooling1D, Dense, Add, LSTM, 
+from math import log
+
+from keras.layers import Input, Embedding, Conv1D, Dropout, MaxPooling1D, Dense, Add, LSTM 
+from keras.models import Model, 
+
 
 class csclassifier:
     def __init__(self):
+        #TODO: Fix C to be input as argument
+        self.C = [7] * 1000
+
         #TODO: Fix self.cdim=log(len(C))
-        self.cdim=10
+        self.cdim = log(len(C), 2)
 
         # Numbers taken from Jaech et. al tuned hyperparameters
         self.n_1 = 59
         self.n_2 = 108
         self.dropout_rate = .25
 
-        self.model = Sequential()
+        # Embed the input character sequence for a word.
+        word = Input(shape(self.C
+
         # Adding T_1 (1st CNN)
-        self.model.add(Conv1D(
+        T_1 = (Conv1D(
             input_shape=(None, self.cdim),
             # 'filters' - the number of filters i.e. dimensionality of output
             # Number taken from Jaech et. al tuned hyperparameters
