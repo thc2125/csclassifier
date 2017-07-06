@@ -1,8 +1,11 @@
+#!/usr/bin/python3
+
+import argparse
+import csv
 from math import log
 
 from keras.layers import Input, Embedding, Conv1D, Dropout, MaxPooling1D, Dense, Add, LSTM 
 from keras.models import Model, 
-
 
 class csclassifier:
     def __init__(self):
@@ -64,6 +67,18 @@ class csclassifier:
         TKTK -- TKTK
          """
 
+    def test(self):
+        """TKTK
 
-def transform_data():
-    pass
+        Keyword arguments:
+        TKTK -- TKTK
+         """
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A neural network based'
+        + 'classifier for detecting code switching.') 
+    parser.add_argument('corpus_filepath', metavar='C', type=str,
+            help='Filepath to the corpus.')
+    args = parser.parse_args()
+    transform_data(args.corpus_filepath)
