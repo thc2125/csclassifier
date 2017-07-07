@@ -38,7 +38,6 @@ class CSClassifier:
 
 
         # First let's set up Char2Vec
-        # Set up the input
         self.input = Input(shape=(None,))
 
         # Set up the embeddings
@@ -92,8 +91,9 @@ class CSClassifier:
         self.z = add([self.y, self.f_r_y])
 
         # The next phase is dealing with all the words in the sentence.     
+        self.char2vec = Model(inputs=self.input, outputs=self.z)
         self.inputs = Input(shape=(None, None))
-        self.Char2Vec = TimeDistributed(self.z)(self.inputs)
+        sent2vec = TimeDistributed(self.char2vec)(self.inputs)
         # TODO: Are default lstm activation functions okay?
         self.v = (Bidirectional(LSTM(self.lstm_dim,
             dropout=self.dropout_rate))(self.Char2Vec))
