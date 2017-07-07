@@ -7,16 +7,17 @@
 # Professor Karl Stratos
 
 import csv
+import numpy as np
+
+from collections import defaultdict
 
 class Corpus():
-    def __init__(self, corpus_filepath)
-    """Transforms a corpus file into numerical data.
+    def __init__(self, corpus_filepath):
+        """Transforms a corpus file into numerical data.
 
-    Keyword arguments:
-    corpus_filepath -- The filepath to a normalized corpus
-    """
-
-
+        Keyword arguments:
+        corpus_filepath -- The filepath to a normalized corpus
+        """
         # We need a set representing every character in the corpus as well
         # as an element representing an unknown character
         # We also need a set of labels for each word
@@ -25,42 +26,101 @@ class Corpus():
 
         # Create values for each language type
         self.lang2idx = {'lang1':0, 'lang2':1, 'other':2}
+        self.idx2lang = {k : v for v, k in self.lang2idx.items()}
 
         # Create a dictionary of sentences to indices
         self.sentence2sidx = defaultdict(int)
         # Create a list where each entry is a list of (word, lang) values in
         # the sentence
         self.sentences = []
+        self.langs = []
 
-        # Generate the corpus
-        read_corpus(corpus_filepath)
+        # Generate the Corpus
+        self.read_corpus(corpus_filepath)
 
-    def read_corpus(self)
-    """Reads in a corpus file and sets the corpus variables.
+    def read_corpus(self, corpus_filepath):
+        """Reads in a corpus file and sets the corpus variables.
     
-    Keyword arguments:
-    corpus_filepath -- The filepath to a normalized corpus
-    """
+        Keyword arguments:
+        corpus_filepath -- The filepath to a normalized corpus
+        """
         with open(corpus_filepath) as corpus_file:
             corpus_reader = csv.reader(corpus_file)
 
             # Skip the header
-            next(corpus_reader(None))
+            next(corpus_reader)
+            cidx = 0
+            sidx = 0
             for row in corpus_reader:
                 word_string = row[1]
                 lang = self.lang2idx[row[2]]
                 word = []
                 for c in word_string:
                     if c not in self.char2idx:
-                        self.char2idx[c] += 1
+                        self.char2idx[c] = cidx
+                        cidx += 1
                         self.idx2char.append(c)
                     word.append(self.char2idx[c])
 
                 # Remove the word id at the end of the sentence name
-                sname = row[0].split(sep='_')[0,3]
-                if sname not in self.sentence2sidx:
-                    self.sentence2sidx[sname] += 1
-                    self.sentences[self.sentence2sidx[sname]] = []
-                sidx = self.sentence2sidx[sname]
-                self.sentences[sidx].append((word, lang))
+                sname = ''.join(row[0].split(sep='_')[0:3])
 
+                if sname not in self.sentence2sidx:
+                    self.sentence2sidx[sname] = sidx
+                    sidx +=1
+                    self.sentences.append([])
+                    self.langs.append([])
+
+                nsidx = self.sentence2sidx[sname]
+                self.sentences[nsidx].append(word)
+                self.langs[nsidx].append(lang)
+
+        # Add one more index for unseen chars
+        # TODO: How do I make sure the frequencies are right during training?
+        self.char2idx['unk'] += 1
+        self.idx2char.append('unk')
+
+        # Finally convert to numpy arrays
+        self.sentences = np.array(self.sentences)
+        self.langs = np.array(self.langs)
+
+    def print_sentences(self):
+        """Prints all sentences in the corpus."""
+        for sentence in self.sentences:
+            self.print_sentence(sentence)
+
+    def print_sentences_langs(self):
+        """Prints all sentences in the corpus."""
+        for sentence,langs in zip(self.sentences, self.langs):
+            self.print_sentence(sentence)
+            self.print_lang(langs)
+
+    def print_sentence(self, sentence):
+        """Prints a sentence.
+
+        Keyword arguments:
+        sentence -- An array of arrays of character indices
+        """
+
+        sentence_string = ""
+        for word_indices in sentence:
+            word = ""
+            for char_idx in word_indices:
+                char = self.idx2char[char_idx]
+                word += char
+            sentence_string += word + " " 
+        print(sentence_string)
+        return sentence_string
+
+    def print_lang(self, langs):
+        """Prints the language classifications for a sentence.
+
+        Keyword arguments:
+        sentence -- An array of arrays of character indices
+        """
+
+        lang_string = ""
+        for lang_indices in langs:
+            lang_string += self.idx2lang[lang_indices] + " " 
+        print(lang_string)
+        return lang_string
