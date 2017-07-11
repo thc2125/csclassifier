@@ -15,6 +15,8 @@ import csv
 import random
 from math import log, ceil
 
+import numpy as np
+
 from keras.layers import Input, Embedding, Conv1D, Dropout, MaxPooling1D
 from keras.layers import Dense, Merge, TimeDistributed, Bidirectional, LSTM
 from keras.layers import add, concatenate
@@ -23,7 +25,7 @@ from keras.models import Model
 from utils import Corpus
 
 class CSClassifier:
-    def __init__(self, char2idx):
+    def __init__(self, char2idx, maxsentlen, maxwordlen):
 
         self.C = char2idx.values()
 
@@ -36,12 +38,13 @@ class CSClassifier:
         self.dropout_rate = .25
         self.kernel_size = 3
 
-
         # First let's set up Char2Vec
-        self.input = Input(shape=(None,))
+        # 
+        self.input = Input(shape=(maxwordlen,))
 
         # Set up the embeddings
-        self.embeddings = Embedding(len(self.C), self.Cdim)(self.input) 
+        self.embeddings = Embedding(len(self.C), self.Cdim, mask_zero=True)(self.input) 
+        # TODO: Add the masking layer for the padded value
 
         # Make T_1 (1st CNN)
         self.T_1 = (Conv1D(
@@ -92,11 +95,12 @@ class CSClassifier:
 
         # The next phase is dealing with all the words in the sentence.     
         self.char2vec = Model(inputs=self.input, outputs=self.z)
-        self.inputs = Input(shape=(None, None))
+        self.inputs = Input(shape=(maxsentlen, maxwordlen))
         sent2vec = TimeDistributed(self.char2vec)(self.inputs)
         # TODO: Are default lstm activation functions okay?
         self.v = (Bidirectional(LSTM(self.lstm_dim,
-            dropout=self.dropout_rate))(self.Char2Vec))
+            dropout=self.dropout_rate))(self.sent2Vec))
+        # Add the time distributed layer after the LSTM
         self.p = Dense(3, activation='softmax')
 
         self.model = Model(inputs=self.inputs, outputs=self.p)
@@ -120,12 +124,21 @@ class CSClassifier:
         """
         pass
 def main(corpus_filepath, epochs=20, batch_size=25):
+    # Ingest the corpus
     corpus = Corpus(corpus_filepath)
     #corpus.print_sentences_langs()
-    sentences = corpus.sentences
-    langs = corpus.langs
-    classifier = CSClassifier(corpus.char2idx)
-    thistory = classifier.model.fit(x=sentences, y=langs, epochs=epochs, batch_size=batch_size,
+
+    train_split = [ceil(9 * len(corpus.langs)/10)]
+    train_sentences, test_sentences = np.split(corpus.sentences, train_split)
+    train_langs, test_langs = np.split(corpus.langs, train_split)
+
+    # Build the model
+    classifier = CSClassifier(corpus.char2idx, corpus.maxsentlen,
+            corpus.maxwordlen)
+    plot_model(classifier.model)
+
+    # Train the model
+    thistory = classifier.model.fit(x=train_sentences, y=train_langs, epochs=epochs, batch_size=batch_size,
             validation_split=.1)
     print(thistory)
 

@@ -25,7 +25,7 @@ class Corpus():
         self.idx2char = []
 
         # Create values for each language type
-        self.lang2idx = {'lang1':0, 'lang2':1, 'other':2}
+        self.lang2idx = {'null': 0, 'lang1':1, 'lang2':2, 'other':3}
         self.idx2lang = {k : v for v, k in self.lang2idx.items()}
 
         # Create a dictionary of sentences to indices
@@ -49,10 +49,25 @@ class Corpus():
 
             # Skip the header
             next(corpus_reader)
-            cidx = 0
-            sidx = 0
+
+            # Set the char and sentence index
+            # Zero is reserved for padding
+            cidx = 1
+            self.idx2char.append(None)
+            sidx = 1
+            # Create the zero placeholder
+            self.sentences.append([])
+            self.langs.append([])
+            self.maxwordlen = 0
+            self.maxsentlen = 0
             for row in corpus_reader:
                 word_string = row[1]
+                # TODO: This puts a max word length on a word
+                # Length arbitrary based on
+                # "supercalifragilisticexpialidocious"
+                if len(word_string) > 34:
+                    continue
+                self.maxwordlen = max(self.maxwordlen, len(word_string))
                 lang = self.lang2idx[row[2]]
                 word = []
                 for c in word_string:
@@ -80,7 +95,21 @@ class Corpus():
         self.char2idx['unk'] += 1
         self.idx2char.append('unk')
 
-        # Finally convert to numpy arrays
+        # Figure out the maximum sentence length in the list of sentences
+        for sentence in self.sentences:
+            self.maxsentlen = max(self.maxsentlen, len(sentence))
+
+        # Now let's pad the corpus
+        # Pad the sentences and langs
+        self.sentences = ([[word + [0]*(self.maxwordlen-len(word)) 
+            for word in sentence] +
+            [[0]*self.maxwordlen]*(self.maxsentlen-len(sentence)) 
+            for sentence in self.sentences])
+        self.langs = ([[lang for lang in sentlangs] + 
+            [0]*(self.maxsentlen-len(sentlangs)) for sentlangs in self.langs])
+
+
+        # Finally convert the sentence and lang ids to numpy arrays
         self.sentences = np.array(self.sentences)
         self.langs = np.array(self.langs)
 
@@ -107,7 +136,8 @@ class Corpus():
             word = ""
             for char_idx in word_indices:
                 char = self.idx2char[char_idx]
-                word += char
+                if char != None:
+                    word += char
             sentence_string += word + " " 
         print(sentence_string)
         return sentence_string
@@ -118,9 +148,8 @@ class Corpus():
         Keyword arguments:
         sentence -- An array of arrays of character indices
         """
-
         lang_string = ""
-        for lang_indices in langs:
-            lang_string += self.idx2lang[lang_indices] + " " 
+        for lang_index in langs:
+            lang_string += self.idx2lang[lang_index] + " " 
         print(lang_string)
         return lang_string
