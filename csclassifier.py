@@ -43,9 +43,9 @@ class CSClassifier:
         self.input = Input(shape=(maxwordlen,))
 
         # Set up the embeddings
-        self.embeddings = Embedding(len(self.C), self.Cdim, mask_zero=True)(self.input) 
         # TODO: Add the masking layer for the padded value
-
+        self.embeddings = Embedding(len(self.C), self.Cdim)(self.input) 
+        
         # Make T_1 (1st CNN)
         self.T_1 = (Conv1D(
             # input shape can be deduced
@@ -96,10 +96,11 @@ class CSClassifier:
         # The next phase is dealing with all the words in the sentence.     
         self.char2vec = Model(inputs=self.input, outputs=self.z)
         self.inputs = Input(shape=(maxsentlen, maxwordlen))
-        sent2vec = TimeDistributed(self.char2vec)(self.inputs)
+        print(maxsentlen)
+        print(maxwordlen)
+        self.sent2vec = TimeDistributed(self.char2vec)(self.inputs)
         # TODO: Are default lstm activation functions okay?
-        self.v = (Bidirectional(LSTM(self.lstm_dim,
-            dropout=self.dropout_rate))(self.sent2Vec))
+        self.v = (Bidirectional(LSTM(self.lstm_dim, dropout=self.dropout_rate))(self.sent2vec))
         # Add the time distributed layer after the LSTM
         self.p = Dense(3, activation='softmax')
 
@@ -128,13 +129,14 @@ def main(corpus_filepath, epochs=20, batch_size=25):
     corpus = Corpus(corpus_filepath)
     #corpus.print_sentences_langs()
 
-    train_split = [ceil(9 * len(corpus.langs)/10)]
+    #train_split = [ceil(9 * len(corpus.langs)/10)]
+    train_split = [ceil(len(corpus.langs)/10)]
+    #train_sentences, test_sentences = np.split(corpus.sentences, train_split)
     train_sentences, test_sentences = np.split(corpus.sentences, train_split)
     train_langs, test_langs = np.split(corpus.langs, train_split)
 
     # Build the model
-    classifier = CSClassifier(corpus.char2idx, corpus.maxsentlen,
-            corpus.maxwordlen)
+    classifier = CSClassifier(corpus.char2idx, corpus.maxsentlen, corpus.maxwordlen)
     plot_model(classifier.model)
 
     # Train the model
