@@ -7,12 +7,13 @@
 # Professor Karl Stratos
 
 import csv
+import os
 import numpy as np
 
 from collections import defaultdict
 
 class Corpus():
-    def __init__(self, corpus_filepath):
+    def __init__(self, corpus_filepath, np_sentences=None, np_lang=None):
         """Transforms a corpus file into numerical data.
 
         Keyword arguments:
@@ -30,10 +31,6 @@ class Corpus():
 
         # Create a dictionary of sentences to indices
         self.sentence2sidx = defaultdict(int)
-        # Create a list where each entry is a list of (word, lang) values in
-        # the sentence
-        self.sentences = []
-        self.langs = []
 
         # Generate the Corpus
         self.read_corpus(corpus_filepath)
@@ -56,8 +53,10 @@ class Corpus():
             self.idx2char.append(None)
             sidx = 1
             # Create the zero placeholder
-            self.sentences.append([])
-            self.langs.append([])
+            raw_sentences=[]
+            raw_sentences.append([])
+            raw_langs=[]
+            raw_langs.append([])
             self.maxwordlen = 0
             self.maxsentlen = 0
             for row in corpus_reader:
@@ -83,12 +82,12 @@ class Corpus():
                 if sname not in self.sentence2sidx:
                     self.sentence2sidx[sname] = sidx
                     sidx +=1
-                    self.sentences.append([])
-                    self.langs.append([])
+                    raw_sentences.append([])
+                    raw_langs.append([])
 
                 nsidx = self.sentence2sidx[sname]
-                self.sentences[nsidx].append(word)
-                self.langs[nsidx].append(lang)
+                raw_sentences[nsidx].append(word)
+                raw_langs[nsidx].append(lang)
 
         # Add one more index for unseen chars
         # TODO: How do I make sure the frequencies are right during training?
@@ -96,22 +95,25 @@ class Corpus():
         self.idx2char.append('unk')
 
         # Figure out the maximum sentence length in the list of sentences
-        for sentence in self.sentences:
+        for sentence in raw_sentences:
             self.maxsentlen = max(self.maxsentlen, len(sentence))
 
         # Now let's pad the corpus
         # Pad the sentences and langs
-        self.sentences = ([[word + [0]*(self.maxwordlen-len(word)) 
+        list_sentences = ([[word + [0]*(self.maxwordlen-len(word)) 
             for word in sentence] +
             [[0]*self.maxwordlen]*(self.maxsentlen-len(sentence)) 
-            for sentence in self.sentences])
-        self.langs = ([[lang for lang in sentlangs] + 
-            [0]*(self.maxsentlen-len(sentlangs)) for sentlangs in self.langs])
-
+            for sentence in raw_sentences])
+        del raw_sentences
+        list_langs = ([[lang for lang in sentlangs] + 
+            [0]*(self.maxsentlen-len(sentlangs)) for sentlangs in raw_langs])
+        del raw_langs
 
         # Finally convert the sentence and lang ids to numpy arrays
-        self.sentences = np.array(self.sentences)
-        self.langs = np.array(self.langs)
+        self.sentences = np.array(list_sentences)
+        del list_sentences
+        self.langs = np.array(list_langs)
+        del list_langs
 
     def print_sentences(self):
         """Prints all sentences in the corpus."""
