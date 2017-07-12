@@ -100,10 +100,6 @@ class CSClassifier:
         self.z = add([self.y, self.f_r_y])
 
         # The next phase is dealing with all the words in the sentence.     
-
-
-        print(maxsentlen)
-        print(maxwordlen)
         # TODO: Are default lstm activation functions okay?
         self.v = Bidirectional(LSTM(self.lstm_dim,
             return_sequences=True, dropout=self.dropout_rate))(self.z)
@@ -141,6 +137,8 @@ def main(corpus_filepath, epochs=20, batch_size=25, corpus_bin='corpus.bin'):
     train_langs, test_langs = np.split(corpus.langs, train_split)
     print(train_sentences.size)
     print(train_sentences.shape)
+    print(train_langs.size)
+    print(train_langs.shape)
 
     # Build the model
     classifier = CSClassifier(corpus.char2idx, corpus.maxsentlen, corpus.maxwordlen)

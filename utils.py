@@ -8,9 +8,11 @@
 
 import csv
 import os
-import numpy as np
 
 from collections import defaultdict
+
+import numpy as np
+from keras.utils import to_categorical
 
 class Corpus():
     def __init__(self, corpus_filepath, np_sentences=None, np_lang=None):
@@ -27,7 +29,7 @@ class Corpus():
 
         # Create values for each language type
         self.lang2idx = {'null': 0, 'lang1':1, 'lang2':2, 'other':3}
-        self.idx2lang = {k : v for v, k in self.lang2idx.items()}
+        self.idx2lang = {k: v for v, k in self.lang2idx.items()}
 
         # Create a dictionary of sentences to indices
         self.sentence2sidx = defaultdict(int)
@@ -112,8 +114,12 @@ class Corpus():
         # Finally convert the sentence and lang ids to numpy arrays
         self.sentences = np.array(list_sentences)
         del list_sentences
-        self.langs = np.array(list_langs)
+        one_hot_langs = ([to_categorical(sentlangs, num_classes=len(self.lang2idx)) 
+            for sentlangs in list_langs])
         del list_langs
+        self.langs = np.array(one_hot_langs)
+        del one_hot_langs
+
 
     def print_sentences(self):
         """Prints all sentences in the corpus."""
