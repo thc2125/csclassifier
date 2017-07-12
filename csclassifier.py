@@ -42,7 +42,13 @@ class CSClassifier:
         self.kernel_size = 3
 
         # First let's set up Char2Vec
-        # 
+        # TODO: Here's an idea on masking: make another input vector for each 
+        # sentence that applies masking yourself. I.e. after the embedding layer,
+        # Multiply those values by a vector of [1,1,1,0,0,0] with 1 
+        # corresponding to values you want and 0 to values you don't want.
+        # This could be created during corpus ingestion and just be another value.
+        # Maybe pop this input/merge right after the embedding layer and before 
+        # the CNN.
         self.inputs = Input(shape=(maxsentlen, maxwordlen,))
 
         # Set up the embeddings
@@ -103,7 +109,7 @@ class CSClassifier:
         # TODO: Are default lstm activation functions okay?
         self.v = Bidirectional(LSTM(self.lstm_dim,
             return_sequences=True, dropout=self.dropout_rate))(self.z)
-        self.p = Dense(4, activation='softmax')(self.v)
+        self.p = Dense(3, activation='softmax')(self.v)
         self.model = Model(inputs=self.inputs, outputs=self.p)
         # Note that 'adam' has a default learning rate of .001
         self.model.compile(loss='categorical_crossentropy', optimizer='adam')
@@ -130,23 +136,23 @@ def main(corpus_filepath, epochs=20, batch_size=25, corpus_bin='corpus.bin'):
 
     #corpus.print_sentences_langs()
 
-    #train_split = [ceil(9 * len(corpus.langs)/10)]
-    train_split = [ceil(len(corpus.langs)/10)]
+    train_split = [ceil(9 * len(corpus.cs)/10)]
     #train_sentences, test_sentences = np.split(corpus.sentences, train_split)
     train_sentences, test_sentences = np.split(corpus.sentences, train_split)
-    train_langs, test_langs = np.split(corpus.langs, train_split)
+    train_cs, test_cs = np.split(corpus.cs, train_split)
     print(train_sentences.size)
     print(train_sentences.shape)
-    print(train_langs.size)
-    print(train_langs.shape)
+    print(train_cs.size)
+    print(train_cs.shape)
 
     # Build the model
     classifier = CSClassifier(corpus.char2idx, corpus.maxsentlen, corpus.maxwordlen)
     
     # Train the model
-    thistory = classifier.model.fit(x=train_sentences, y=train_langs,
+    thistory = classifier.model.fit(x=train_sentences, y=train_cs,
             epochs=epochs, batch_size=batch_size, validation_split=.1)
     print(thistory)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A neural network based'

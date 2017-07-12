@@ -27,10 +27,6 @@ class Corpus():
         self.char2idx = defaultdict(int)
         self.idx2char = []
 
-        # Create values for each language type
-        self.lang2idx = {'null': 0, 'lang1':1, 'lang2':2, 'other':3}
-        self.idx2lang = {k: v for v, k in self.lang2idx.items()}
-
         # Create a dictionary of sentences to indices
         self.sentence2sidx = defaultdict(int)
 
@@ -57,8 +53,10 @@ class Corpus():
             # Create the zero placeholder
             raw_sentences=[]
             raw_sentences.append([])
-            raw_langs=[]
-            raw_langs.append([])
+            #TODO: Try with and without padding
+            raw_cs=[]
+            raw_cs.append([])
+            lang_stream = None
             self.maxwordlen = 0
             self.maxsentlen = 0
             for row in corpus_reader:
@@ -69,7 +67,15 @@ class Corpus():
                 if len(word_string) > 34:
                     continue
                 self.maxwordlen = max(self.maxwordlen, len(word_string))
-                lang = self.lang2idx[row[2]]
+                lang = row[2]
+                if lang_stream == None:
+                    lang_stream = lang
+                    cs = 1
+                elif lang != 'other' and lang != lang_stream:
+                    lang_stream = lang
+                    cs = 2
+                else:
+                    cs = 1
                 word = []
                 for c in word_string:
                     if c not in self.char2idx:
@@ -85,11 +91,11 @@ class Corpus():
                     self.sentence2sidx[sname] = sidx
                     sidx +=1
                     raw_sentences.append([])
-                    raw_langs.append([])
+                    raw_cs.append([])
 
                 nsidx = self.sentence2sidx[sname]
                 raw_sentences[nsidx].append(word)
-                raw_langs[nsidx].append(lang)
+                raw_cs[nsidx].append(cs)
 
         # Add one more index for unseen chars
         # TODO: How do I make sure the frequencies are right during training?
@@ -107,18 +113,18 @@ class Corpus():
             [[0]*self.maxwordlen]*(self.maxsentlen-len(sentence)) 
             for sentence in raw_sentences])
         del raw_sentences
-        list_langs = ([[lang for lang in sentlangs] + 
-            [0]*(self.maxsentlen-len(sentlangs)) for sentlangs in raw_langs])
-        del raw_langs
+        list_cs = ([[cs for cs in sentcs] + 
+            [0]*(self.maxsentlen-len(sentcs)) for sentcs in raw_cs])
+        del raw_cs
 
         # Finally convert the sentence and lang ids to numpy arrays
         self.sentences = np.array(list_sentences)
         del list_sentences
-        one_hot_langs = ([to_categorical(sentlangs, num_classes=len(self.lang2idx)) 
-            for sentlangs in list_langs])
-        del list_langs
-        self.langs = np.array(one_hot_langs)
-        del one_hot_langs
+        one_hot_cs = ([to_categorical(sentcs, num_classes=3) 
+            for sentcs in list_cs])
+        del list_cs
+        self.cs = np.array(one_hot_cs)
+        del one_hot_cs
 
 
     def print_sentences(self):
