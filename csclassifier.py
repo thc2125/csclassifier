@@ -15,6 +15,7 @@ import csv
 import random
 import pickle
 import os
+
 from math import log, ceil
 
 import numpy as np
@@ -205,7 +206,7 @@ def main(corpus_filepath, epochs=20, batch_size=25, corpus_bin='corpus.bin'):
     #corpus.print_sentences_langs()
 
     train_split = [ceil(9 * len(corpus.cs)/10)]
-    #train_split = [ceil(len(corpus.cs)/100), 2 * ceil(len(corpus.cs)/100)]
+    #train_split = [ceil(len(corpus.cs)/10), 2 * ceil(len(corpus.cs)/10)]
 
     #train_sentences, test_sentences = np.split(corpus.sentences, train_split)
     train_sentences, test_sentences = np.split(corpus.sentences, train_split)
@@ -220,16 +221,19 @@ def main(corpus_filepath, epochs=20, batch_size=25, corpus_bin='corpus.bin'):
     
     # Train the model
     classifier.model.fit(x=train_sentences, y=train_cs,
-            epochs=1, batch_size=batch_size, validation_split=.1)
+            epochs=epochs, batch_size=batch_size, validation_split=.1)
 
     # Evaluate the model
-    evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
+    #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
     #print(evaluation)
-    #pred_cs = classifier.model.predict(x=train_sentences)
+    pred_cs = classifier.model.predict(x=train_sentences)
     test_cs_idcs = np.argmax(test_cs, axis=2)
-    #pred_cs_idcs = np.argmax(pred_cs, axis=2)
-    #print(pred_cs_idcs)
-    #print(f1_score(test_cs_idcs, pred_cs_idcs, average=None))
+    pred_cs_idcs = np.argmax(pred_cs, axis=2)
+    print(pred_cs_idcs)
+    metrics = (compute_accuracy_metrics(test_cs_idcs, pred_cs_idcs, {'<PAD>':0, 'no_cs':1, 'cs':2}))
+    for metric in metrics:
+        print(metric + ": " + str(metrics[metric]))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A neural network based'
         + 'classifier for detecting code switching.') 
