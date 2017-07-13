@@ -27,7 +27,7 @@ from keras.layers import add, concatenate
 from keras.models import Model
 from keras.utils import plot_model
 
-from sklearn import metrics
+from sklearn.metrics import f1_score
 from utils import Corpus
 
 class CSClassifier:
@@ -136,50 +136,80 @@ class CSClassifier:
         pass
 
     def f1_score(self, y_true, y_pred):
-        """A Keras custom metric to evaluate f1 score
+        y_true_cats = K.argmax(y_true, axis=-1)
+        y_pred_cats = K.argmax(y_true, axis=-1)
 
-        Keyword arguments:
-        y_true -- A tensor of gold labels
-        y_pred -- A tensor of predicted labels
-        """
-        # Create a tensor of values equal to the predicted category
-        y_true_cat = K.argmax(y_true, axis=-1)
-        y_pred_cat = K.argmax(y_pred, axis=-1)
-        cat_f1 = K.placeholder()
         for i in range(3):
-            cat = K.constant(i, shape=y_true_cat.get_shape())
-            # Binary tensors representing all the labels equal to a 
-            # given category, i.e. get rid of any labels not for the 
-            # current cat
-            y_true_curr_cat = K.equal(y_true_cat, cat, K.floatx())
-            y_pred_curr_cat = K.equal(y_pred_cat, cat, K.floatx())
-            # Where do they match?
-            true_positives = K.equal(y_true_curr_cat,
-                                     y_pred_curr_cat, K.floatx())
-            # Where do they not match?
-            false_positives = K.not_equal(y_true_curr_cat,
-                                          y_pred_curr_cat, K.floatx())
-            # Sum the true positives and false positives
-            sum_tp = K.sum(true_positives)
-            sum_fp = K.sum(false_positives)
-            precision = sum_tp / (sum_tp + sum_fp)
-            recall = sum_tp / K.sum(y_true_curr_cat)
-            f1 = 2 * (precision * recall) / (precision + recall)
-            cat_f1 = K.concatenate([cat_f1, f1], axis=-1)
-        return cat_f1 
-        pass
+            fp_cat = K.equal(y_true_cats, i)
+
+        return fp_cat
+
+def compute_accuracy_metrics(y_test, y_pred, list_tags):
+    tagset_size = len(list_tags)
+    num_tokens = 0
+    num_eq = 0
+    confusion_matrix = np.zeros((tagset_size, tagset_size))
+    true_pos = np.zeros(tagset_size)
+    false_pos = np.zeros(tagset_size)
+    false_neg = np.zeros(tagset_size)
+
+    for seq_idx in range(len(y_test)):
+        if len(y_test[seq_idx]) != len(y_pred[seq_idx]):
+            raise Exception("Test and Pred tokens have different lengths:" + str(len(y_test[seq_idx])) + " " + str(
+                len(y_pred[seq_idx])))
+
+        for i in range(len(y_test[seq_idx])):
+            pos_test = y_test[seq_idx][i]
+            if pos_test != list_tags['<PAD>']:
+                pos_pred = y_pred[seq_idx][i]
+                num_tokens += 1
+                if pos_test == pos_pred:
+                    num_eq += 1
+                    true_pos[pos_test] += 1
+                else:
+                    false_neg[pos_test] += 1
+                    false_pos[pos_pred] += 1
+                confusion_matrix[pos_test, pos_pred] += 1
+
+    accuracy = num_eq * 1.0 / num_tokens
+
+    recall = np.zeros(tagset_size)
+    precision = np.zeros(tagset_size)
+    fscore = np.zeros(tagset_size)
+    for idx in range(tagset_size):
+        if false_neg[idx] + true_pos[idx] == 0:
+            recall[idx] = 1.0
+        else:
+            recall[idx] = true_pos[idx] * 1.0 / (true_pos[idx] + false_neg[idx])
+        if true_pos[idx] + false_pos[idx] == 0:
+            precision[idx] = 1.0
+        else:
+            precision[idx] = true_pos[idx] * 1.0 / (true_pos[idx] + false_pos[idx])
+        if recall[idx] + precision[idx] == 0.0:
+            fscore[idx] = 0.0
+        else:
+            fscore[idx] = 2.0 * recall[idx] * precision[idx] / (recall[idx] + precision[idx])
+
+    results = dict()
+    results['accuracy'] = accuracy
+    results['confusion_matrix'] = confusion_matrix
+    results['precision'] = precision
+    results['recall'] = recall
+    results['fscore'] = fscore
+    return results
+
 def main(corpus_filepath, epochs=20, batch_size=25, corpus_bin='corpus.bin'):
     # Ingest the corpus
     corpus = Corpus(corpus_filepath)
 
     #corpus.print_sentences_langs()
 
-    # train_split = [ceil(9 * len(corpus.cs)/10)]
-    train_split = [ceil(len(corpus.cs)/100), 2 * ceil(len(corpus.cs)/100)]
+    train_split = [ceil(9 * len(corpus.cs)/10)]
+    #train_split = [ceil(len(corpus.cs)/100), 2 * ceil(len(corpus.cs)/100)]
 
     #train_sentences, test_sentences = np.split(corpus.sentences, train_split)
-    train_sentences, test_sentences, _ = np.split(corpus.sentences, train_split)
-    train_cs, test_cs, _ = np.split(corpus.cs, train_split)
+    train_sentences, test_sentences = np.split(corpus.sentences, train_split)
+    train_cs, test_cs = np.split(corpus.cs, train_split)
     print(train_sentences.size)
     print(train_sentences.shape)
     print(train_cs.size)
@@ -189,15 +219,17 @@ def main(corpus_filepath, epochs=20, batch_size=25, corpus_bin='corpus.bin'):
     classifier = CSClassifier(corpus.char2idx, corpus.maxsentlen, corpus.maxwordlen)
     
     # Train the model
-    thistory = classifier.model.fit(x=train_sentences, y=train_cs,
-            epochs=epochs, batch_size=batch_size, validation_split=.1)
-    print(thistory)
+    classifier.model.fit(x=train_sentences, y=train_cs,
+            epochs=1, batch_size=batch_size, validation_split=.1)
 
     # Evaluate the model
     evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
-    print(evaluation)
-
-
+    #print(evaluation)
+    #pred_cs = classifier.model.predict(x=train_sentences)
+    test_cs_idcs = np.argmax(test_cs, axis=2)
+    #pred_cs_idcs = np.argmax(pred_cs, axis=2)
+    #print(pred_cs_idcs)
+    #print(f1_score(test_cs_idcs, pred_cs_idcs, average=None))
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A neural network based'
         + 'classifier for detecting code switching.') 
