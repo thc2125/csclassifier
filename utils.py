@@ -105,7 +105,9 @@ class Corpus():
         # And pad the sentences and labels
         if self.idx2char == None or self.char2idx == None:
             self.create_dictionary()
-        list_sentences = ([[[self.char2idx[c] for c in word] 
+        list_sentences = ([[[(self.char2idx[c] if c in self.char2idx 
+                         else self.char2idx['unk'])
+                     for c in word] 
                 + [0]*(maxwordlen-len(word)) 
             for word in sentence]
                 + [[0]*maxwordlen]*(maxsentlen-len(sentence)) 
