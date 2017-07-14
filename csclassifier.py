@@ -113,7 +113,7 @@ class CSClassifier:
         # TODO: Are default lstm activation functions okay?
         self.v = Bidirectional(LSTM(self.lstm_dim,
             return_sequences=True, dropout=self.dropout_rate))(self.z)
-        self.p = Dense(3, activation='softmax')(self.v)
+        self.p = Dense(num_labels, activation='softmax')(self.v)
         self.model = Model(inputs=self.inputs, outputs=self.p)
         # Note that 'adam' has a default learning rate of .001
         self.model.compile(loss='categorical_crossentropy', optimizer='adam', 
@@ -232,18 +232,23 @@ def main_aaron(train_corpus_filepath, test_corpus_filepath, epochs=20, batch_siz
     # Ingest the corpus
     train_corpus = Corpus_Aaron()
     train_corpus.read_corpus(train_corpus_filepath, dl='\t')
-    train_sentences, train_labels = train_corpus.np_idx_conversion()
     char2idx, idx2char = train_corpus.create_dictionary()
 
-    test_corpus = Corpus_Aaron()
-    test_corpus.read_corpus(test_corpus_filepath, dl='\t',(char2idx, idx2char))
-    test_sentences, test_labels = test_corpus.np_idx_conversion()
+    test_corpus = Corpus_Aaron(dictionary=(char2idx, idx2char))
+    test_corpus.read_corpus(test_corpus_filepath, dl='\t')
+        
+    maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
+    maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)   
+
+    train_sentences, train_labels = train_corpus.np_idx_conversion(maxsentlen,
+        maxwordlen)
+
+    test_sentences, test_labels = test_corpus.np_idx_conversion(maxsentlen, 
+        maxwordlen)
 
     label2idx = train_corpus.label2idx
     idx2label = train_corpus.idx2label
 
-    maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
-    maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)   
 
     #utils.print_np_sentences_np_labels(train_sentences, train_labels, train_idx2char, train_idx2label)
 
@@ -255,11 +260,12 @@ def main_aaron(train_corpus_filepath, test_corpus_filepath, epochs=20, batch_siz
     print(train_labels.shape)
 
     # Build the model
-    classifier = CSClassifier(train_char2idx, maxsentlen, maxwordlen, num_labels)
+    classifier = CSClassifier(char2idx, maxsentlen, maxwordlen, 
+        num_labels)
     
     # Train the model
     classifier.model.fit(x=train_sentences, y=train_labels,
-            epochs=20, batch_size=batch_size, validation_split=.1)
+        epochs=epochs, batch_size=batch_size, validation_split=.1)
 
     # Evaluate the model
     #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
@@ -269,12 +275,13 @@ def main_aaron(train_corpus_filepath, test_corpus_filepath, epochs=20, batch_siz
     # Transform labels to represent category index
     test_cat_labels = np.argmax(test_labels, axis=2)
     pred_cat_labels = np.argmax(pred_labels, axis=2)
-    print(pred_labels_idcs)
-    metrics = (compute_accuracy_metrics(test_cat_labels, pred_cat_labels, label2idx))
+    print(pred_cat_labels)
+    metrics = (compute_accuracy_metrics(
+            test_cat_labels, pred_cat_labels, label2idx))
     for metric in metrics:
+        if metric == 'confusion_matrix':
+            continue
         print(metric + ": " + str(metrics[metric]))
-    '''
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A neural network based'

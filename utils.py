@@ -25,7 +25,7 @@ class Corpus():
         self.char2idx, self.idx2char = dictionary
 
         # We also need a set of labels for each word
-        self.label2idx = {'null':0, 'no_cs': 1, 'cs':2}
+        self.label2idx = {'<PAD>':0, 'no_cs': 1, 'cs':2}
         self.idx2label = {i:l for l, i in self.label2idx.items()}
 
     def read_corpus(self, corpus_filepath, dl):
@@ -90,9 +90,9 @@ class Corpus():
        else:
            label = 'no_cs'
 
-    def np_idx_conversion(self):
+    def np_idx_conversion(self, maxsentlen, maxwordlen):
         # Convert the sentences and labels to lists of indices
-        list_sentences, list_labels = self.idx_conversion()
+        list_sentences, list_labels = self.idx_conversion(maxsentlen, maxwordlen)
         # Finally convert the sentence and label ids to numpy arrays
         np_sentences = np.array(list_sentences)
         del list_sentences
@@ -100,19 +100,19 @@ class Corpus():
         del list_labels
         return np_sentences, np_slabels
 
-    def idx_conversion(self):
+    def idx_conversion(self, maxsentlen, maxwordlen):
         # Convert words to indices 
         # And pad the sentences and labels
         if self.idx2char == None or self.char2idx == None:
             self.create_dictionary()
         list_sentences = ([[[self.char2idx[c] for c in word] 
-                + [0]*(self.maxwordlen-len(word)) 
+                + [0]*(maxwordlen-len(word)) 
             for word in sentence]
-                + [[0]*self.maxwordlen]*(self.maxsentlen-len(sentence)) 
+                + [[0]*maxwordlen]*(maxsentlen-len(sentence)) 
             for sentence in self.sentences])
 
         list_cat_labels = ([[self.label2idx[label] for label in sentlabels] 
-                + [0] * (self.maxsentlen-len(sentlabels)) 
+                + [0] * (maxsentlen-len(sentlabels)) 
             for sentlabels in self.labels])
         # Make labels one-hot
         list_labels = ([to_categorical(sentlabels, 
@@ -145,14 +145,14 @@ class Corpus():
 
 
 class Corpus_Aaron(Corpus):
-    def __init__(self):
+    def __init__(self, dictionary=(None, None)):
         """Reads in a corpus file and sets the corpus variables.
     
         Keyword arguments:
         corpus_filepath -- The filepath to a normalized corpus
         """
         Corpus.__init__(self)
-        self.label2idx = ({'null':0, 'lang1': 1, 'lang2':2, 'other':3, 'ne':4, 
+        self.label2idx = ({'<PAD>':0, 'lang1': 1, 'lang2':2, 'other':3, 'ne':4, 
             'ambiguous':5, 'fw':6, 'mixed':7, 'unk':8})
         self.idx2label = {i:l for l, i in self.label2idx.items()}
 
