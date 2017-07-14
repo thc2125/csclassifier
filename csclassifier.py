@@ -28,11 +28,11 @@ from keras.layers import add, concatenate
 from keras.models import Model
 from keras.utils import plot_model
 
-from sklearn.metrics import f1_score
-from utils import Corpus
+import utils
+from utils import Corpus, Corpus_Aaron
 
 class CSClassifier:
-    def __init__(self, char2idx, maxsentlen, maxwordlen):
+    def __init__(self, char2idx, maxsentlen, maxwordlen, num_labels):
 
         self.C = char2idx.values()
 
@@ -117,7 +117,7 @@ class CSClassifier:
         self.model = Model(inputs=self.inputs, outputs=self.p)
         # Note that 'adam' has a default learning rate of .001
         self.model.compile(loss='categorical_crossentropy', optimizer='adam', 
-            metrics=['categorical_accuracy', self.f1_score])
+            metrics=['categorical_accuracy'])
         plot_model(self.model, show_shapes=True)
 
     def classify_sentence(self, sentence):
@@ -135,15 +135,6 @@ class CSClassifier:
         TKTK -- TKTK
         """
         pass
-
-    def f1_score(self, y_true, y_pred):
-        y_true_cats = K.argmax(y_true, axis=-1)
-        y_pred_cats = K.argmax(y_true, axis=-1)
-
-        for i in range(3):
-            fp_cat = K.equal(y_true_cats, i)
-
-        return fp_cat
 
 def compute_accuracy_metrics(y_test, y_pred, list_tags):
     tagset_size = len(list_tags)
@@ -199,49 +190,104 @@ def compute_accuracy_metrics(y_test, y_pred, list_tags):
     results['fscore'] = fscore
     return results
 
-def main(corpus_filepath, epochs=20, batch_size=25, corpus_bin='corpus.bin'):
+def main(corpus_filepath, epochs=20, batch_size=25):
     # Ingest the corpus
-    corpus = Corpus(corpus_filepath)
+    corpus = Corpus()
+    corpus.read_corpus(corpus_filepath)
 
     #corpus.print_sentences_langs()
 
     train_split = [ceil(9 * len(corpus.cs)/10)]
     #train_split = [ceil(len(corpus.cs)/10), 2 * ceil(len(corpus.cs)/10)]
 
-    #train_sentences, test_sentences = np.split(corpus.sentences, train_split)
     train_sentences, test_sentences = np.split(corpus.sentences, train_split)
-    train_cs, test_cs = np.split(corpus.cs, train_split)
+    train_sentences, test_sentences = np.split(corpus.sentences, train_split)
+    #train_cs, test_cs = np.split(corpus.cs, train_split)
+    train_cs, test_cs = np.split(corpus.labels, train_split)
+    num_labels = len(corpus.label2idx)
     print(train_sentences.size)
     print(train_sentences.shape)
     print(train_cs.size)
     print(train_cs.shape)
 
     # Build the model
-    classifier = CSClassifier(corpus.char2idx, corpus.maxsentlen, corpus.maxwordlen)
+    classifier = CSClassifier(corpus.char2idx, corpus.maxsentlen, corpus.maxwordlen, num_labels)
     
     # Train the model
     classifier.model.fit(x=train_sentences, y=train_cs,
-            epochs=epochs, batch_size=batch_size, validation_split=.1)
+            epochs=1, batch_size=batch_size, validation_split=.1)
 
     # Evaluate the model
     #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
     #print(evaluation)
-    pred_cs = classifier.model.predict(x=train_sentences)
+    pred_cs = classifier.model.predict(x=test_sentences)
     test_cs_idcs = np.argmax(test_cs, axis=2)
     pred_cs_idcs = np.argmax(pred_cs, axis=2)
     print(pred_cs_idcs)
-    metrics = (compute_accuracy_metrics(test_cs_idcs, pred_cs_idcs, {'<PAD>':0, 'no_cs':1, 'cs':2}))
+    metrics = (compute_accuracy_metrics(test_cs_idcs, pred_cs_idcs, corpus.label2idx))
     for metric in metrics:
         print(metric + ": " + str(metrics[metric]))
+
+def main_aaron(train_corpus_filepath, test_corpus_filepath, epochs=20, batch_size=25):
+    # Ingest the corpus
+    train_corpus = Corpus_Aaron()
+    train_corpus.read_corpus(train_corpus_filepath, dl='\t')
+    train_sentences, train_labels = train_corpus.np_idx_conversion()
+    char2idx, idx2char = train_corpus.create_dictionary()
+
+    test_corpus = Corpus_Aaron()
+    test_corpus.read_corpus(test_corpus_filepath, dl='\t',(char2idx, idx2char))
+    test_sentences, test_labels = test_corpus.np_idx_conversion()
+
+    label2idx = train_corpus.label2idx
+    idx2label = train_corpus.idx2label
+
+    maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
+    maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)   
+
+    #utils.print_np_sentences_np_labels(train_sentences, train_labels, train_idx2char, train_idx2label)
+
+    num_labels = len(label2idx)
+
+    print(train_sentences.size)
+    print(train_sentences.shape)
+    print(train_labels.size)
+    print(train_labels.shape)
+
+    # Build the model
+    classifier = CSClassifier(train_char2idx, maxsentlen, maxwordlen, num_labels)
+    
+    # Train the model
+    classifier.model.fit(x=train_sentences, y=train_labels,
+            epochs=20, batch_size=batch_size, validation_split=.1)
+
+    # Evaluate the model
+    #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
+    #print(evaluation)
+
+    pred_labels = classifier.model.predict(x=test_sentences)
+    # Transform labels to represent category index
+    test_cat_labels = np.argmax(test_labels, axis=2)
+    pred_cat_labels = np.argmax(pred_labels, axis=2)
+    print(pred_labels_idcs)
+    metrics = (compute_accuracy_metrics(test_cat_labels, pred_cat_labels, label2idx))
+    for metric in metrics:
+        print(metric + ": " + str(metrics[metric]))
+    '''
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A neural network based'
         + 'classifier for detecting code switching.') 
-    parser.add_argument('corpus_filepath', metavar='C', type=str,
-            help='Filepath to the corpus.')
+    parser.add_argument('train_corpus_filepath', metavar='TrC', type=str,
+            help='Filepath to the training corpus.')
+    parser.add_argument('test_corpus_filepath', metavar='TeC', type=str,
+            help='Filepath to the test corpus.')
+
     '''
     parser.add_argument('--corpus_obj', metavar='CO', type=str, 
         help='A previously created corpus object.')
     '''
     args = parser.parse_args()
-    main(args.corpus_filepath)
+    #main(args.corpus_filepath)
+    main_aaron(args.train_corpus_filepath, args.test_corpus_filepath)

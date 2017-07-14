@@ -15,155 +15,188 @@ import numpy as np
 from keras.utils import to_categorical
 
 class Corpus():
-    def __init__(self, corpus_filepath, np_sentences=None, np_lang=None):
+    def __init__(self, dictionary=(None, None)):
         """Transforms a corpus file into numerical data.
 
         Keyword arguments:
         corpus_filepath -- The filepath to a normalized corpus
         """
-        # We need a set representing every character in the corpus as well
-        # as an element representing an unknown character
+        # Set the dictionary if one is provided 
+        self.char2idx, self.idx2char = dictionary
+
         # We also need a set of labels for each word
-        self.char2idx = defaultdict(int)
-        self.idx2char = []
+        self.label2idx = {'null':0, 'no_cs': 1, 'cs':2}
+        self.idx2label = {i:l for l, i in self.label2idx.items()}
 
-        # Create a dictionary of sentences to indices
-        self.sentence2sidx = defaultdict(int)
-
-        # Generate the Corpus
-        self.read_corpus(corpus_filepath)
-
-    def read_corpus(self, corpus_filepath):
+    def read_corpus(self, corpus_filepath, dl):
         """Reads in a corpus file and sets the corpus variables.
     
         Keyword arguments:
         corpus_filepath -- The filepath to a normalized corpus
         """
+        self.corpus_filepath = corpus_filepath
+
         with open(corpus_filepath) as corpus_file:
-            corpus_reader = csv.reader(corpus_file)
+            corpus_reader = csv.reader(corpus_file, delimiter=dl)
 
             # Skip the header
             next(corpus_reader)
 
-            # Set the char and sentence index
-            # Zero is reserved for padding
-            cidx = 1
-            self.idx2char.append(None)
-            sidx = 1
-            # Create the zero placeholder
-            raw_sentences=[]
-            raw_sentences.append([])
-            #TODO: Try with and without padding
-            raw_cs=[]
-            raw_cs.append([])
-            lang_stream = None
+            self.sentences=[]
+            self.labels=[]
+            self.lang_stream = None
             self.maxwordlen = 0
             self.maxsentlen = 0
+            self.sentence2sidx = {}
+            self.sidx = 0
             for row in corpus_reader:
-                word_string = row[1]
-                # TODO: This puts a max word length on a word
-                # Length arbitrary based on
-                # "supercalifragilisticexpialidocious"
-                if len(word_string) > 34:
-                    continue
-                self.maxwordlen = max(self.maxwordlen, len(word_string))
-                lang = row[2]
-                if lang_stream == None:
-                    lang_stream = lang
-                    cs = 1
-                elif lang != 'other' and lang != lang_stream:
-                    lang_stream = lang
-                    cs = 2
-                else:
-                    cs = 1
-                word = []
-                for c in word_string:
+                self.read_row(row)
+
+        # Figure out the maximum sentence length in the list of sentences
+        for sentence in self.sentences:
+            self.maxsentlen = max(self.maxsentlen, len(sentence))
+
+    def read_row(self, row):
+           word = row[1]
+           # TODO: This puts a max word length on a word
+           # Length arbitrary based on
+           # len("supercalifragilisticexpialidocious")
+           if len(word) > 34:
+               return
+           self.maxwordlen = max(self.maxwordlen, len(word))
+           lang = row[2]
+           label = self.label_word(lang)
+
+           # Remove the word id at the end of the sentence name
+           sname = ''.join(row[0].split(sep='_')[0:3])
+
+           if sname not in self.sentence2sidx:
+               self.sentence2sidx[sname] = self.sidx
+               self.sidx +=1
+               self.sentences.append([])
+               self.labels.append([])
+
+           nsidx = self.sentence2sidx[sname]
+           self.sentences[nsidx].append(word)
+           self.labels[nsidx].append(label)
+
+    def label_word(self, lang):
+       if self.lang_stream == None:
+           self.lang_stream = lang
+           label = 'no_cs'
+       if lang != 'other' and lang != self.lang_stream:
+           self.lang_stream = lang
+           label = 'cs'
+       else:
+           label = 'no_cs'
+
+    def np_idx_conversion(self):
+        # Convert the sentences and labels to lists of indices
+        list_sentences, list_labels = self.idx_conversion()
+        # Finally convert the sentence and label ids to numpy arrays
+        np_sentences = np.array(list_sentences)
+        del list_sentences
+        np_slabels = np.array(list_labels)
+        del list_labels
+        return np_sentences, np_slabels
+
+    def idx_conversion(self):
+        # Convert words to indices 
+        # And pad the sentences and labels
+        if self.idx2char == None or self.char2idx == None:
+            self.create_dictionary()
+        list_sentences = ([[[self.char2idx[c] for c in word] 
+                + [0]*(self.maxwordlen-len(word)) 
+            for word in sentence]
+                + [[0]*self.maxwordlen]*(self.maxsentlen-len(sentence)) 
+            for sentence in self.sentences])
+
+        list_cat_labels = ([[self.label2idx[label] for label in sentlabels] 
+                + [0] * (self.maxsentlen-len(sentlabels)) 
+            for sentlabels in self.labels])
+        # Make labels one-hot
+        list_labels = ([to_categorical(sentlabels, 
+                num_classes=len(self.label2idx)) 
+            for sentlabels in list_cat_labels])
+
+        return list_sentences, list_labels
+
+    def create_dictionary(self):
+        self.idx2char = []
+        # Set the zero index to the null character
+        self.idx2char.append(0)
+        self.char2idx = defaultdict(int)
+        # set the null character index to zero
+        self.char2idx[0] = 0
+
+        for sentence in self.sentences:
+            for word in sentence:
+                for c in word:
                     if c not in self.char2idx:
-                        self.char2idx[c] = cidx
-                        cidx += 1
+                        self.char2idx[c] = len(self.idx2char)
                         self.idx2char.append(c)
-                    word.append(self.char2idx[c])
-
-                # Remove the word id at the end of the sentence name
-                sname = ''.join(row[0].split(sep='_')[0:3])
-
-                if sname not in self.sentence2sidx:
-                    self.sentence2sidx[sname] = sidx
-                    sidx +=1
-                    raw_sentences.append([])
-                    raw_cs.append([])
-
-                nsidx = self.sentence2sidx[sname]
-                raw_sentences[nsidx].append(word)
-                raw_cs[nsidx].append(cs)
 
         # Add one more index for unseen chars
         # TODO: How do I make sure the frequencies are right during training?
         self.char2idx['unk'] += 1
         self.idx2char.append('unk')
-
-        # Figure out the maximum sentence length in the list of sentences
-        for sentence in raw_sentences:
-            self.maxsentlen = max(self.maxsentlen, len(sentence))
-
-        # Now let's pad the corpus
-        # Pad the sentences and langs
-        list_sentences = ([[word + [0]*(self.maxwordlen-len(word)) 
-            for word in sentence] +
-            [[0]*self.maxwordlen]*(self.maxsentlen-len(sentence)) 
-            for sentence in raw_sentences])
-        del raw_sentences
-        list_cs = ([[cs for cs in sentcs] + 
-            [0]*(self.maxsentlen-len(sentcs)) for sentcs in raw_cs])
-        del raw_cs
-
-        # Finally convert the sentence and lang ids to numpy arrays
-        self.sentences = np.array(list_sentences)
-        del list_sentences
-        one_hot_cs = ([to_categorical(sentcs, num_classes=3) 
-            for sentcs in list_cs])
-        del list_cs
-        self.cs = np.array(one_hot_cs)
-        del one_hot_cs
+        
+        return self.char2idx, self.idx2char
 
 
-    def print_sentences(self):
-        """Prints all sentences in the corpus."""
-        for sentence in self.sentences:
-            self.print_sentence(sentence)
-
-    def print_sentences_langs(self):
-        """Prints all sentences in the corpus."""
-        for sentence,langs in zip(self.sentences, self.langs):
-            self.print_sentence(sentence)
-            self.print_lang(langs)
-
-    def print_sentence(self, sentence):
-        """Prints a sentence.
-
+class Corpus_Aaron(Corpus):
+    def __init__(self):
+        """Reads in a corpus file and sets the corpus variables.
+    
         Keyword arguments:
-        sentence -- An array of arrays of character indices
+        corpus_filepath -- The filepath to a normalized corpus
         """
+        Corpus.__init__(self)
+        self.label2idx = ({'null':0, 'lang1': 1, 'lang2':2, 'other':3, 'ne':4, 
+            'ambiguous':5, 'fw':6, 'mixed':7, 'unk':8})
+        self.idx2label = {i:l for l, i in self.label2idx.items()}
 
-        sentence_string = ""
-        for word_indices in sentence:
-            word = ""
-            for char_idx in word_indices:
-                char = self.idx2char[char_idx]
-                if char != None:
-                    word += char
-            sentence_string += word + " " 
-        print(sentence_string)
-        return sentence_string
+    def label_word(self, lang):
+        return lang
 
-    def print_lang(self, langs):
-        """Prints the language classifications for a sentence.
+def print_np_sentences(np_sentences, idx2char):
+    """Prints all sentences in the corpus."""
+    for np_sentence in np_sentences:
+        print_sentence(np_sentence, idx2char)
 
-        Keyword arguments:
-        sentence -- An array of arrays of character indices
-        """
-        lang_string = ""
-        for lang_index in langs:
-            lang_string += self.idx2lang[lang_index] + " " 
-        print(lang_string)
-        return lang_string
+def print_np_sentences_np_labels(np_sentences, np_slabels, idx2char, idx2label):
+    """Prints all sentences in the corpus."""
+    for np_sentence, np_labels in zip(np_sentences, np_slabels):
+        print_np_sentence(np_sentence, idx2char)
+        print_np_label(np_labels, idx2label)
+
+def print_np_sentence(np_sentence, idx2char):
+    """Prints a sentence.
+
+    Keyword arguments:
+    sentence -- An array of arrays of character indices
+    """
+    sentence_string = ""
+    for word_indices in np_sentence:
+        word = ""
+        for char_idx in word_indices:
+            char = idx2char[char_idx]
+            if char != 0:
+                word += char
+        sentence_string += word + " " 
+    print(sentence_string)
+    return sentence_string
+
+def print_np_label(np_labels, idx2label):
+    """Prints the language classifications for a sentence.
+
+    Keyword arguments:
+    sentence -- An array of arrays of character indices
+    """
+    label_string = ""
+    for label_index in np_labels:
+        label_string += idx2label[np.argmax(label_index)] + " " 
+    print(label_string)
+    return label_string
+
+
