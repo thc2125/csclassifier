@@ -75,6 +75,9 @@ class Corpus():
                self.sidx +=1
                self.sentences.append([])
                self.labels.append([])
+               # Note that the corpus must have words in sentences ordered and
+               # row adjacent
+               self.lang_stream = None
 
            nsidx = self.sentence2sidx[sname]
            self.sentences[nsidx].append(word)
