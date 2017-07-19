@@ -19,7 +19,7 @@ class Corpus():
         """Transforms a corpus file into numerical data.
 
         Keyword arguments:
-        corpus_filepath -- The filepath to a normalized corpus
+        dictionary -- A tuple of a dictionary and list respectively
         """
         # Set the dictionary if one is provided 
         self.char2idx, self.idx2char = dictionary
@@ -83,22 +83,25 @@ class Corpus():
     def label_word(self, lang):
        if self.lang_stream == None:
            self.lang_stream = lang
-           label = 'no_cs'
-       if lang != 'other' and lang != self.lang_stream:
+           return 'no_cs'
+       elif (lang != 'other' and lang != self.lang_stream):
            self.lang_stream = lang
-           label = 'cs'
+           return 'cs'
        else:
-           label = 'no_cs'
+           return 'no_cs'
 
     def np_idx_conversion(self, maxsentlen, maxwordlen):
         # Convert the sentences and labels to lists of indices
-        list_sentences, list_labels = self.idx_conversion(maxsentlen, maxwordlen)
+        list_sentences, list_labels, list_labels_weights = (
+            self.idx_conversion(maxsentlen, maxwordlen))
         # Finally convert the sentence and label ids to numpy arrays
         np_sentences = np.array(list_sentences)
+        np_labels_weights = np.array(list_labels_weights)
         del list_sentences
+        del list_labels_weights
         np_slabels = np.array(list_labels)
         del list_labels
-        return np_sentences, np_slabels
+        return np_sentences, np_slabels, np_labels_weights
 
     def idx_conversion(self, maxsentlen, maxwordlen):
         # Convert words to indices 
@@ -121,7 +124,11 @@ class Corpus():
                 num_classes=len(self.label2idx)) 
             for sentlabels in list_cat_labels])
 
-        return list_sentences, list_labels
+        list_labels_weights = ([[(1 if label != 0 else 0) for label in list_slabels] 
+            for list_slabels in list_cat_labels])
+
+
+        return list_sentences, list_labels, list_labels_weights
 
     def create_dictionary(self):
         self.idx2char = []
@@ -145,7 +152,6 @@ class Corpus():
         
         return self.char2idx, self.idx2char
 
-
 class Corpus_Aaron(Corpus):
     def __init__(self, dictionary=(None, None)):
         """Reads in a corpus file and sets the corpus variables.
@@ -153,7 +159,7 @@ class Corpus_Aaron(Corpus):
         Keyword arguments:
         corpus_filepath -- The filepath to a normalized corpus
         """
-        Corpus.__init__(self)
+        Corpus.__init__(self, dictionary)
         self.label2idx = ({'<PAD>':0, 'lang1': 1, 'lang2':2, 'other':3, 'ne':4, 
             'ambiguous':5, 'fw':6, 'mixed':7, 'unk':8})
         self.idx2label = {i:l for l, i in self.label2idx.items()}
@@ -164,13 +170,26 @@ class Corpus_Aaron(Corpus):
 def print_np_sentences(np_sentences, idx2char):
     """Prints all sentences in the corpus."""
     for np_sentence in np_sentences:
-        print_sentence(np_sentence, idx2char)
+        print_np_sentence(np_sentence, idx2char)
 
-def print_np_sentences_np_labels(np_sentences, np_slabels, idx2char, idx2label):
+def print_np_labels(np_slabels, idx2label):
+    """Prints all sentences in the corpus."""
+    for np_labels in np_slabels:
+        print_np_label(np_labels, idx2label)
+
+def print_np_sentences_np_gold_pred_labels(np_sentences, np_gold_slabels, np_pred_slabels, idx2char, idx2label):
+    """Prints all sentences in the corpus."""
+    for np_sentence, np_gold_labels, np_pred_labels in zip(np_sentences, np_gold_slabels, np_pred_slabels):
+        print_np_sentence(np_sentence, idx2char)
+        print_np_label(np_gold_labels, idx2label)
+        print_np_label(np_pred_labels, idx2label)
+
+def print_np_sentences_np__labels(np_sentences, np_slabels, idx2char, idx2label):
     """Prints all sentences in the corpus."""
     for np_sentence, np_labels in zip(np_sentences, np_slabels):
         print_np_sentence(np_sentence, idx2char)
         print_np_label(np_labels, idx2label)
+
 
 def print_np_sentence(np_sentence, idx2char):
     """Prints a sentence.
@@ -201,4 +220,57 @@ def print_np_label(np_labels, idx2label):
     print(label_string)
     return label_string
 
+def compute_accuracy_metrics(y_test, y_pred, list_tags):
+    tagset_size = len(list_tags)
+    num_tokens = 0
+    num_eq = 0
+    confusion_matrix = np.zeros((tagset_size, tagset_size))
+    true_pos = np.zeros(tagset_size)
+    false_pos = np.zeros(tagset_size)
+    false_neg = np.zeros(tagset_size)
+
+    for seq_idx in range(len(y_test)):
+        if len(y_test[seq_idx]) != len(y_pred[seq_idx]):
+            raise Exception("Test and Pred tokens have different lengths:" + str(len(y_test[seq_idx])) + " " + str(
+                len(y_pred[seq_idx])))
+
+        for i in range(len(y_test[seq_idx])):
+            pos_test = y_test[seq_idx][i]
+            if pos_test != list_tags['<PAD>']:
+                pos_pred = y_pred[seq_idx][i]
+                num_tokens += 1
+                if pos_test == pos_pred:
+                    num_eq += 1
+                    true_pos[pos_test] += 1
+                else:
+                    false_neg[pos_test] += 1
+                    false_pos[pos_pred] += 1
+                confusion_matrix[pos_test, pos_pred] += 1
+
+    accuracy = num_eq * 1.0 / num_tokens
+
+    recall = np.zeros(tagset_size)
+    precision = np.zeros(tagset_size)
+    fscore = np.zeros(tagset_size)
+    for idx in range(tagset_size):
+        if false_neg[idx] + true_pos[idx] == 0:
+            recall[idx] = 1.0
+        else:
+            recall[idx] = true_pos[idx] * 1.0 / (true_pos[idx] + false_neg[idx])
+        if true_pos[idx] + false_pos[idx] == 0:
+            precision[idx] = 1.0
+        else:
+            precision[idx] = true_pos[idx] * 1.0 / (true_pos[idx] + false_pos[idx])
+        if recall[idx] + precision[idx] == 0.0:
+            fscore[idx] = 0.0
+        else:
+            fscore[idx] = 2.0 * recall[idx] * precision[idx] / (recall[idx] + precision[idx])
+
+    results = dict()
+    results['accuracy'] = accuracy
+    results['confusion_matrix'] = confusion_matrix
+    results['precision'] = precision
+    results['recall'] = recall
+    results['fscore'] = fscore
+    return results
 
