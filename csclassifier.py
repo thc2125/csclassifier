@@ -26,14 +26,14 @@ import utils
 from utils import Corpus, Corpus_Aaron
 from classifier import Classifier
 
-def main(corpus_filepath, model, epochs=20, batch_size=25):
+def main(corpus_filepath, model, epochs=50, batch_size=25):
     # Ingest the corpus
     corpus = Corpus()
     corpus.read_corpus(corpus_filepath, dl=',')
     char2idx, idx2char = corpus.create_dictionary()
 
-    #train_split = [ceil(9 * len(corpus.sentences)/10)]
-    train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
+    train_split = [ceil(9 * len(corpus.sentences)/10)]
+    #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
 
     maxsentlen = corpus.maxsentlen
     maxwordlen = corpus.maxwordlen
@@ -41,9 +41,9 @@ def main(corpus_filepath, model, epochs=20, batch_size=25):
     sentences, labels, labels_weights = corpus.np_idx_conversion(maxsentlen,
         maxwordlen)
 
-    train_sentences, test_sentences, _  = np.split(sentences, train_split)
-    train_labels, test_labels, _ = np.split(labels, train_split)
-    train_labels_weights, _, _ = np.split(labels_weights, train_split)
+    train_sentences, test_sentences = np.split(sentences, train_split)
+    train_labels, test_labels = np.split(labels, train_split)
+    train_labels_weights, _ = np.split(labels_weights, train_split)
 
     label2idx = corpus.label2idx
     idx2label = corpus.idx2label
