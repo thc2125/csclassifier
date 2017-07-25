@@ -15,18 +15,35 @@ import numpy as np
 from keras.utils import to_categorical
 
 class Corpus():
-    def __init__(self, dictionary=(None, None)):
-        """Transforms a corpus file into numerical data.
-
+    def __init__(self, char_dictionary=(None, None), 
+        label_dictionary=(None, None)):
+        """Reads in a corpus file and sets the corpus variables.
+    
         Keyword arguments:
-        dictionary -- A tuple of a dictionary and list respectively
+        char_dictionary -- A tuple of dictionaries for characters to indices 
+                           and indices to characters
+        label_dictionary -- A tuple of dictionaries for labels to indices 
+                           and indices to labels
+
         """
         # Set the dictionary if one is provided 
-        self.char2idx, self.idx2char = dictionary
+        self.char2idx, self.idx2char = char_dictionary
 
         # We also need a set of labels for each word
-        self.label2idx = {'<PAD>':0, 'no_cs': 1, 'cs':2}
-        self.idx2label = {i:l for l, i in self.label2idx.items()}
+        self.label2idx, self.idx2label = label_dictionary
+
+    def __add__(self, other):
+        new_corpus = Corpus(label_dictionary=(self.label2idx,self.idx2label))
+        new_corpus.sidx = len(self.sentences)
+        new_corpus.sentences = sentencesself.sentences + other.sentences
+        new_corpus.labels = sentencesself.labels + other.labels
+        new_sentence2sidx = {s : (i + new_corpus.sidx) for s, i in
+                other.sentence2sidx.items()}
+        new_corpus.sidx = len(new_corpus.sentences)
+        new_corpus.maxsentlen = max(self.maxsentlen, other.maxsentlen)
+        new_corpus.maxwordlen = max(self.maxwordlen, other.maxwordlen)
+        
+        return new_corpus
 
     def read_corpus(self, corpus_filepath, dl):
         """Reads in a corpus file and sets the corpus variables.
@@ -44,7 +61,6 @@ class Corpus():
 
             self.sentences=[]
             self.labels=[]
-            self.lang_stream = None
             self.maxwordlen = 0
             self.maxsentlen = 0
             self.sentence2sidx = {}
@@ -64,34 +80,27 @@ class Corpus():
            if len(word) > 34:
                return
            self.maxwordlen = max(self.maxwordlen, len(word))
-           lang = row[2]
-           label = self.label_word(lang)
+           
+           label = self.label_word(row[2])
 
            # Remove the word id at the end of the sentence name
            sname = ''.join(row[0].split(sep='_')[0:3])
 
            if sname not in self.sentence2sidx:
-               self.sentence2sidx[sname] = self.sidx
-               self.sidx +=1
-               self.sentences.append([])
-               self.labels.append([])
-               # Note that the corpus must have words in sentences ordered and
-               # row adjacent
-               self.lang_stream = None
+               self.add_sentence(sname)
 
            nsidx = self.sentence2sidx[sname]
            self.sentences[nsidx].append(word)
            self.labels[nsidx].append(label)
 
-    def label_word(self, lang):
-       if self.lang_stream == None:
-           self.lang_stream = lang
-           return 'no_cs'
-       elif (lang != 'other' and lang != self.lang_stream):
-           self.lang_stream = lang
-           return 'cs'
-       else:
-           return 'no_cs'
+    def add_sentence(self, sname):
+           self.sentence2sidx[sname] = self.sidx
+           self.sidx +=1
+           self.sentences.append([])
+           self.labels.append([])
+
+    def label_word(self, label):
+        return label
 
     def np_idx_conversion(self, maxsentlen, maxwordlen):
         # Convert the sentences and labels to lists of indices
@@ -150,25 +159,61 @@ class Corpus():
 
         # Add one more index for unseen chars
         # TODO: How do I make sure the frequencies are right during training?
-        self.char2idx['unk'] += 1
+        self.char2idx['unk'] += len(self.idx2char)
         self.idx2char.append('unk')
         
         return self.char2idx, self.idx2char
 
 class Corpus_Aaron(Corpus):
-    def __init__(self, dictionary=(None, None)):
+    def __init__(self, char_dictionary=(None, None), label_dictionary=(None, None)):
         """Reads in a corpus file and sets the corpus variables.
     
         Keyword arguments:
-        corpus_filepath -- The filepath to a normalized corpus
-        """
-        Corpus.__init__(self, dictionary)
-        self.label2idx = ({'<PAD>':0, 'lang1': 1, 'lang2':2, 'other':3, 'ne':4, 
-            'ambiguous':5, 'fw':6, 'mixed':7, 'unk':8})
-        self.idx2label = {i:l for l, i in self.label2idx.items()}
+        char_dictionary -- A tuple of dictionaries for characters to indices 
+                           and indices to characters
+        label_dictionary -- A tuple of dictionaries for labels to indices 
+                           and indices to labels
 
-    def label_word(self, lang):
-        return lang
+        """
+        label2idx = ({'<PAD>':0, 'lang1': 1, 'lang2':2, 'other':3, 'ne':4, 
+        'ambiguous':5, 'fw':6, 'mixed':7, 'unk':8})
+        idx2label = {i:l for l, i in self.label2idx.items()}
+
+        Corpus.__init__(self, label_dictionary=(label2idx, idx2label))
+
+class Corpus_CS_Langs(Corpus):
+    def __init__(self, char_dictionary=(None, None)):
+        """Reads in a corpus file and sets the corpus variables.
+    
+        Keyword arguments:
+        dictionary -- A tuple of dictionaries for characters to indices and
+                      indices to characters
+        """
+        label2idx = {'<PAD>':0, 'no_cs': 1, 'cs':2}
+        idx2label = {i:l for l, i in self.label2idx.items()}
+
+        Corpus.__init__(self, char_dictionary,
+                label_dictionary=(label2idx,idx2label))
+
+    def label_word(self, label):
+       if self.lang_stream == None:
+           self.lang_stream = label
+           return 'no_cs'
+       elif (label != 'other' and label != self.lang_stream):
+           self.lang_stream = label
+           return 'cs'
+       else:
+           return 'no_cs'
+
+    def read_corpus(self, corpus_filepath, dl):
+        self.lang_stream = None
+        Corpus.read_corpus(corpus_filepath, dl)
+
+    def add_sentence(self, sname):
+        Corpus.add_sentence(sname)
+        # Note that the corpus must have words in sentences ordered and
+        # row adjacent
+        self.lang_stream = None
 
 def print_np_sentences(np_sentences, idx2char):
     """Prints all sentences in the corpus."""
@@ -187,12 +232,11 @@ def print_np_sentences_np_gold_pred_labels(np_sentences, np_gold_slabels, np_pre
         print_np_label(np_gold_labels, idx2label)
         print_np_label(np_pred_labels, idx2label)
 
-def print_np_sentences_np__labels(np_sentences, np_slabels, idx2char, idx2label):
+def print_np_sentences_np_labels(np_sentences, np_slabels, idx2char, idx2label):
     """Prints all sentences in the corpus."""
     for np_sentence, np_labels in zip(np_sentences, np_slabels):
         print_np_sentence(np_sentence, idx2char)
         print_np_label(np_labels, idx2label)
-
 
 def print_np_sentence(np_sentence, idx2char):
     """Prints a sentence.

@@ -19,6 +19,7 @@ import os
 from math import ceil
 
 import numpy as np
+from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 
 import utils
@@ -27,8 +28,9 @@ from utils import Corpus, Corpus_Aaron
 from classifier import Classifier
 
 def main(corpus_filepath, model, epochs=50, batch_size=25):
+
     # Ingest the corpus
-    corpus = Corpus()
+    corpus = Corpus_CS_Langs()
     corpus.read_corpus(corpus_filepath, dl=',')
     char2idx, idx2char = corpus.create_dictionary()
 
@@ -45,13 +47,12 @@ def main(corpus_filepath, model, epochs=50, batch_size=25):
     train_labels, test_labels = np.split(labels, train_split)
     train_labels_weights, _ = np.split(labels_weights, train_split)
 
-    label2idx = corpus.label2idx
-    idx2label = corpus.idx2label
+    label2idx = train_corpus.label2idx
+    idx2label = train_corpus.idx2label
 
     utils.print_np_sentence(train_sentences[20], idx2char) 
     utils.print_np_label(train_labels[20], idx2label)
     print(train_labels_weights[20])
-
 
     num_labels = len(corpus.label2idx)
 
@@ -73,6 +74,7 @@ def main(corpus_filepath, model, epochs=50, batch_size=25):
     # Evaluate the model
     #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
     #print(evaluation)
+    print("Testing on sentences of shape: " + str(test_sentences.shape))
     pred_labels = classifier.model.predict(x=test_sentences)
 
     # Transform labels to represent category index
