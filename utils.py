@@ -6,6 +6,9 @@
 # Assignment 4
 # Professor Karl Stratos
 
+# Code for accuracy metrics provided by
+# Victor Soto Martinez
+
 import csv
 import os
 
@@ -24,8 +27,8 @@ class Corpus():
                            and indices to characters
         label_dictionary -- A tuple of dictionaries for labels to indices 
                            and indices to labels
-
         """
+
         # Set the dictionary if one is provided 
         self.char2idx, self.idx2char = char_dictionary
 
@@ -84,7 +87,7 @@ class Corpus():
            label = self.label_word(row[2])
 
            # Remove the word id at the end of the sentence name
-           sname = ''.join(row[0].split(sep='_')[0:3])
+           sname = ''.join(row[0].split(sep='_')[0:4])
 
            if sname not in self.sentence2sidx:
                self.add_sentence(sname)
