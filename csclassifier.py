@@ -19,6 +19,7 @@ import os
 from math import ceil
 
 import numpy as np
+from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 
 import utils
@@ -73,6 +74,7 @@ def main(corpus_filepath, model, epochs=50, batch_size=25):
     # Evaluate the model
     #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
     #print(evaluation)
+    print("Testing on sentences of shape: " + str(test_sentences.shape))
     pred_labels = classifier.model.predict(x=test_sentences)
 
     # Transform labels to represent category index

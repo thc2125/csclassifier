@@ -6,6 +6,9 @@
 # Assignment 4
 # Professor Karl Stratos
 
+# Code for accuracy metrics provided by
+# Victor Soto Martinez
+
 import csv
 import os
 
@@ -15,7 +18,8 @@ import numpy as np
 from keras.utils import to_categorical
 
 class Corpus():
-    def __init__(self, dictionary=(None, None)):
+    def __init__(self, dictionary=(None, None), 
+        label2idx={'<PAD>':0, 'no_cs': 1, 'cs':2}):
         """Transforms a corpus file into numerical data.
 
         Keyword arguments:
@@ -25,7 +29,7 @@ class Corpus():
         self.char2idx, self.idx2char = dictionary
 
         # We also need a set of labels for each word
-        self.label2idx = {'<PAD>':0, 'no_cs': 1, 'cs':2}
+        self.label2idx = label2idx
         self.idx2label = {i:l for l, i in self.label2idx.items()}
 
     def read_corpus(self, corpus_filepath, dl):
@@ -68,7 +72,7 @@ class Corpus():
            label = self.label_word(lang)
 
            # Remove the word id at the end of the sentence name
-           sname = ''.join(row[0].split(sep='_')[0:3])
+           sname = ''.join(row[0].split(sep='_')[0:4])
 
            if sname not in self.sentence2sidx:
                self.sentence2sidx[sname] = self.sidx
