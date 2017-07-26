@@ -34,12 +34,13 @@ class Corpus():
 
         # We also need a set of labels for each word
         self.label2idx, self.idx2label = label_dictionary
+        self.__init_data()
 
     def __add__(self, other):
         new_corpus = Corpus(label_dictionary=(self.label2idx,self.idx2label))
         new_corpus.sidx = len(self.sentences)
-        new_corpus.sentences = sentencesself.sentences + other.sentences
-        new_corpus.labels = sentencesself.labels + other.labels
+        new_corpus.sentences = self.sentences + other.sentences
+        new_corpus.labels = self.labels + other.labels
         new_sentence2sidx = {s : (i + new_corpus.sidx) for s, i in
                 other.sentence2sidx.items()}
         new_corpus.sidx = len(new_corpus.sentences)
@@ -47,6 +48,15 @@ class Corpus():
         new_corpus.maxwordlen = max(self.maxwordlen, other.maxwordlen)
         
         return new_corpus
+
+     def __init_data(self):
+            self.sentences=[]
+            self.labels=[]
+            self.maxwordlen = 0
+            self.maxsentlen = 0
+            self.sentence2sidx = {}
+            self.sidx = 0
+
 
     def read_corpus(self, corpus_filepath, dl):
         """Reads in a corpus file and sets the corpus variables.
@@ -62,12 +72,6 @@ class Corpus():
             # Skip the header
             next(corpus_reader)
 
-            self.sentences=[]
-            self.labels=[]
-            self.maxwordlen = 0
-            self.maxsentlen = 0
-            self.sentence2sidx = {}
-            self.sidx = 0
             for row in corpus_reader:
                 self.read_row(row)
 
