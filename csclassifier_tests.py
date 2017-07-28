@@ -26,9 +26,11 @@ from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 
 import utils
+import csclassifier
 
 from utils import Corpus, Corpus_Aaron
 from classifier import Classifier
+from csclassifier import CSClassifier
 
 corpus_filename_prefix = 'normalized-twitter_cs_'
 
@@ -45,71 +47,43 @@ def main(corpus_folder_filepath, model, epochs=50, batch_size=25):
             langs = f.name.replace(corpus_filename_prefix,'')
             corpora[langs] = corpus
 
+    metrics = {}
     for test_langs in corpora.keys():
         test_corpus = corpora[test_langs]
-        train_corpus = Corpus_CS_Langs()
+        train_corpus = Corpus_CS_Langs(train=True)
         for langs in corpora.keys():
             if langs != test_langs:
                 train_corpus = corpus + corpora[langs]
 
+        maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
+        maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)
+
+        label2idx = train_corpus.label2idx
+        idx2label = train_corpus.idx2label
+
         char2idx, idx2char = train_corpus.create_dictionary()
 
-        #train_split = [ceil(9 * len(corpus.sentences)/10)]
-        #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
+        csc = CSClassifier(maxsentlen, maxwordlen, label2idx, idx2label, char2idx, idx2char)
+       
+        csc.generate_model(train_corpus, test_langs)
+        metrics[test_langs] = csc.evaluate_model(test_corpus)
+        del test_corpus
+        del train_corpus
 
-        maxsentlen = corpus.maxsentlen
-        maxwordlen = corpus.maxwordlen
+    corpus = Corpus_CS_Langs(train=True)
 
-        train_sentences, train_labels, train_labels_weights = corpus.np_idx_conversion(maxsentlen,
-            maxwordlen)
 
-        test_sentences, test_labels, test_labels_weights = corpus.np_idx_conversion(maxsentlen,
-            maxwordlen)
 
-        train_sentences, test_sentences = np.split(sentences, train_split)
-        train_labels, test_labels = np.split(labels, train_split)
-        train_labels_weights, _ = np.split(labels_weights, train_split)
 
-    label2idx = train_corpus.label2idx
-    idx2label = train_corpus.idx2label
+    with open('csclassifier_test_results', 'w') as results_file:
+        results_file.write("CSCLASSIFIER MODEL RESULTS:\n")
+        for lang in metrics.keys():
+            results_file.write("Training on " + str([train_lang 
+                    if train_lang != lang for train_lang in metrics.keys()]) + '\n')
+            results_file.write("Testing on " + lang + '\n')
+            for metric in metrics[lang].keys():
+                results_file.write(metric + ": " + metrics[lang][metric] + '\n')
 
-    utils.print_np_sentence(train_sentences[20], idx2char) 
-    utils.print_np_label(train_labels[20], idx2label)
-    print(train_labels_weights[20])
-
-    num_labels = len(corpus.label2idx)
-
-    # Build the model
-    classifier = Classifier(char2idx, maxsentlen, maxwordlen, num_labels)
-
-    if model != None:
-        # Load the model
-        classifier.model = load_model(model)
-    else:
-        # Train the model
-        checkpoint = ModelCheckpoint(filepath='checkpoint.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
-        classifier.model.fit(x=train_sentences, y=train_labels,
-            epochs=epochs, batch_size=batch_size, validation_split=.1,
-            sample_weight=train_labels_weights, callbacks=[checkpoint])
-        # Save the model
-        classifier.model.save('cs_classifier_model.h5')
-
-    # Evaluate the model
-    #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
-    #print(evaluation)
-    print("Testing on sentences of shape: " + str(test_sentences.shape))
-    pred_labels = classifier.model.predict(x=test_sentences)
-
-    # Transform labels to represent category index
-    test_cat_labels = np.argmax(test_labels, axis=2)
-    pred_cat_labels = np.argmax(pred_labels, axis=2)
-
-    metrics = (utils.compute_accuracy_metrics(
-        test_cat_labels, pred_cat_labels, label2idx))
-    for metric in metrics:
-        if metric == 'confusion_matrix':
-            continue
-        print(metric + ": " + str(metrics[metric]))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A neural network based'

@@ -47,14 +47,16 @@ class CorpusTestCase(unittest.TestCase):
         pass
 
     def test___add___sentences_len(self):
+        c1_sent_len = len(self.corpus1.sentences)
+        c2_sent_len = len(self.corpus1.sentences)
         new_corpus = self.corpus1 + self.corpus2
-        self.assertEqual(len(new_corpus.sentences), len(self.corpus1.sentences)
-            + len(self.corpus2.sentences))
+        self.assertEqual(len(new_corpus.sentences), c1_sent_len + c2_sent_len)
 
     def test___add___labels_len(self):
+        c1_label_len = len(self.corpus1.labels)
+        c2_label_len = len(self.corpus1.labels)
         new_corpus = self.corpus1 + self.corpus2
-        self.assertEqual(len(new_corpus.sentences), len(self.corpus1.sentences)
-            + len(self.corpus2.sentences))
+        self.assertEqual(len(new_corpus.labels), c1_label_len + c2_label_len)
 
     def test___add___sentence_elements(self):
         new_corpus = self.corpus1 + self.corpus2
