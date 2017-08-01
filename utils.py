@@ -14,6 +14,7 @@ import os
 
 
 from collections import defaultdict
+from collections import Counter
 from math import sqrt
 from random import random
 
@@ -45,19 +46,6 @@ class Corpus():
         self.train = train
         self.__init_data()
 
-    # TODO: Need to fix this so that tests don't fail
-    def __add__(self, other):
-        self.sidx = len(self.sentences)
-        self.sentences = self.sentences + other.sentences
-        self.labels = self.labels + other.labels
-        self.sentence2sidx = {s : (i + self.sidx) for s, i in
-                other.sentence2sidx.items()}
-        self.sidx = len(self.sentences)
-        self.maxsentlen = max(self.maxsentlen, other.maxsentlen)
-        self.maxwordlen = max(self.maxwordlen, other.maxwordlen)
-        
-        return self 
-
     def __init_data(self):
         self.sentences=[]
         self.labels=[]
@@ -66,6 +54,27 @@ class Corpus():
         self.sentence2sidx = {}
         self.sidx = 0
         self.char_frequency = defaultdict(int)
+
+
+    # TODO: Need to fix this so that tests don't fail
+    def __add__(self, other):
+        corp = Corpus()
+        return self.__combine(corp, other)
+        
+
+    def __combine(self, corp, other):
+        corp.sidx = len(self.sentences)
+        corp.sentences = self.sentences + other.sentences
+        corp.labels = self.labels + other.labels
+        corp.sentence2sidx = {s : (i + self.sidx) for s, i in
+                other.sentence2sidx.items()}
+        corp.sidx = len(corp.sentences)
+        corp.maxsentlen = max(self.maxsentlen, other.maxsentlen)
+        corp.maxwordlen = max(self.maxwordlen, other.maxwordlen)
+        # TODO: Is it okay to turn a defaultdict into a counter?
+        corp.char_frequency = (Counter(self.char_frequency) 
+            + Counter(other.char_frequency))
+        return corp
 
 
     def read_corpus(self, corpus_filepath, dl):
@@ -85,33 +94,41 @@ class Corpus():
             for row in corpus_reader:
                 self.read_row(row)
 
+        self.char_frequency = Counter(self.char_frequency)
+
         # Figure out the maximum sentence length in the list of sentences
         for sentence in self.sentences:
             self.maxsentlen = max(self.maxsentlen, len(sentence))
 
     def read_row(self, row):
-           word = row[1]
-           # TODO: This puts a max word length on a word
-           # Length arbitrary based on
-           # len("supercalifragilisticexpialidocious")
-           if len(word) > 34:
-               return
-           self.maxwordlen = max(self.maxwordlen, len(word))
+        """Reads a csv row and updates the Corpus variables.
+    
+        Keyword arguments:
+        row -- a list of csv row values ([sentence_id, word, lang_label,...])
+        """
+
+        word = row[1]
+        # TODO: This puts a max word length on a word
+        # Length arbitrary based on
+        # len("supercalifragilisticexpialidocious")
+        if len(word) > 34:
+           return
+        self.maxwordlen = max(self.maxwordlen, len(word))
            
-           label = self.label_word(row[2])
+        label = self.label_word(row[2])
 
-           # Remove the word id at the end of the sentence name
-           sname = ''.join(row[0].split(sep='_')[0:4])
+        # Remove the word id at the end of the sentence name
+        sname = ''.join(row[0].split(sep='_')[0:4])
 
-           if sname not in self.sentence2sidx:
-               self.add_sentence(sname)
+        if sname not in self.sentence2sidx:
+           self.add_sentence(sname)
 
-           nsidx = self.sentence2sidx[sname]
-           self.sentences[nsidx].append(word)
-           # Get the character frequency for a word.
-           for c in word:
-               self.char_frequency[c] += 1
-           self.labels[nsidx].append(label)
+        nsidx = self.sentence2sidx[sname]
+        self.sentences[nsidx].append(word)
+        # Get the character frequency for a word.
+        for c in word:
+           self.char_frequency[c] += 1
+        self.labels[nsidx].append(label)
 
     def add_sentence(self, sname):
            self.sentence2sidx[sname] = self.sidx
@@ -174,17 +191,17 @@ class Corpus():
         # "Improving Distributional Similarity with Lessons Learned from Word Embeddings"
         # Levy, Goldberg, Dagan
         if not self.train:
-            return false
+            return False
 
         t = .00001
         f = self.char_frequency[c]
         p = 1 - sqrt(t/f)
         if random() > p:
-            return false
+            return False
         else:
-            return true
+            return True
 
-    def create_dictionary(self):
+    def create_dictionary(self, use_alphabets=False):
         self.idx2char = []
         # Set the zero index to the null character
         self.idx2char.append(0)
@@ -199,11 +216,17 @@ class Corpus():
                         self.char2idx[c] = len(self.idx2char)
                         self.idx2char.append(c)
 
-        # Add indices for unseen chars for each alphabet representable 
-        # by unicode
-        for a in alphabets:
-            self.char2idx['unk' + a] += len(self.idx2char)
-            self.idx2char.append('unk' + a)
+
+        if use_alphabets:
+            # Add indices for unseen chars for each alphabet representable 
+            # by unicode
+            for a in alphabets:
+                self.char2idx['unk' + a] += len(self.idx2char)
+                self.idx2char.append('unk' + a)
+        else:
+            self.char2idx['unk'] += len(self.idx2char)
+            self.idx2char.append('unk')
+
         
         return self.char2idx, self.idx2char
 
@@ -226,6 +249,11 @@ class Corpus_Aaron(Corpus):
 
         Corpus.__init__(self, label_dictionary=(label2idx, idx2label))
 
+    def __add__(self, other):
+        corp = Corpus_Aaron()
+        return self.__combine(corp, other)
+
+
 class Corpus_CS_Langs(Corpus):
     def __init__(self, char_dictionary=(None, None), train=False):
         """Reads in a corpus file and sets the corpus variables.
@@ -239,6 +267,11 @@ class Corpus_CS_Langs(Corpus):
 
         Corpus.__init__(self, char_dictionary,
                 label_dictionary=(label2idx,idx2label))
+
+    def __add__(self, other):
+        corp = Corpus_CS_Langs()
+        return self.__combine(corp, other)
+
 
     def label_word(self, label):
        if self.lang_stream == None:
