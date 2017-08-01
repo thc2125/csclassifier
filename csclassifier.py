@@ -27,33 +27,6 @@ import utils
 from utils import Corpus, Corpus_Aaron
 from classifier import Classifier
 
-def main(corpus_filepath, model, epochs=50, batch_size=25):
-
-    # Ingest the corpus
-    corpus = Corpus_CS_Langs()
-    corpus.read_corpus(corpus_filepath, dl=',')
-    char2idx, idx2char = corpus.create_dictionary()
-
-    train_split = [ceil(9 * len(corpus.sentences)/10)]
-    #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
-
-    maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
-    maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)   
-
-    sentences, labels, labels_weights = corpus.np_idx_conversion(maxsentlen,
-        maxwordlen)
-
-    train_sentences, test_sentences = np.split(sentences, train_split)
-    train_labels, test_labels = np.split(labels, train_split)
-    train_labels_weights, _ = np.split(labels_weights, train_split)
-
-    label2idx = train_corpus.label2idx
-    idx2label = train_corpus.idx2label
-
-    char2idx, idx2char = train_corpus.create_dictionary()
-    #TODO
-  
-
 class CSClassifier():
     def __init__(self, maxsentlen, maxwordlen, label2idx, idx2label, char2idx, idx2char):
         self.maxsentlen = maxsentlen
@@ -86,7 +59,7 @@ class CSClassifier():
             classifier.model = load_model(model)
         else:
             # Train the model
-            checkpoint = ModelCheckpoint(filepath='checkpoint_'+test_langs+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
+            checkpoint = ModelCheckpoint(filepath='checkpoints/checkpoint_'+test_langs+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
             classifier.model.fit(x=train_sentences, y=train_labels,
                 epochs=epochs, batch_size=batch_size, validation_split=.1,
                 sample_weight=train_labels_weights, callbacks=[checkpoint])
@@ -116,16 +89,4 @@ class CSClassifier():
             if metric == 'confusion_matrix':
                 continue
             print(metric + ": " + str(metrics[metric]))
-       return metrics
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A neural network based'
-        + 'classifier for detecting code switching.') 
-    parser.add_argument('corpus_filepath', metavar='C', type=str,
-            help='Filepath to the corpus.')
-    parser.add_argument('--model', metavar='M', type=str,
-            help='Optional pre-trained model to load into classifier.')
-
-    args = parser.parse_args()
-    #main(args.corpus_filepath)
-    main(args.corpus_filepath, args.model)
+        return metrics

@@ -2,12 +2,18 @@
 
 import unittest
 import csv
+import random
 
 from utils import Corpus 
 from collections import defaultdict
+from collections import Counter
+
+
 
 word_col = 1
 dl = ','
+
+
 
 
 class CorpusTestCase(unittest.TestCase):
@@ -98,15 +104,6 @@ class CorpusTestCase(unittest.TestCase):
         new_corpus = self.corpus1 + self.corpus2
         new_sentences = self.corpus1.sentences + self.corpus2.sentences
         self.assertCountEqual(new_corpus.sentences, new_sentences)
-        '''
-        loc = 0
-        for i in range(len(self.corpus1.sentences)):
-            for j in range(len(new_corpus.sentences[i])):
-                self.assertEqual(new_corpus.sentences[i][j], 
-                    self.corpus1.sentences[i][j] if loc < len(self.corpus1.sentences)
-                    else self.corpus2.sentences[i-len(self.corpus1.sentences)][j])
-                loc += 1
-        '''
 
     def test___add___bookkeeping(self):
         new_corpus = self.corpus1 + self.corpus2
@@ -123,17 +120,68 @@ class CorpusTestCase(unittest.TestCase):
 
         self.assertEqual(new_corpus.char_frequency, new_char_frequency)
 
-
     def test_read_corpus_sentences(self):
         self.assertCountEqual(self.corpus1.sentences, self.sentences1)
 
     def test_read_corpus_labels(self):
         self.assertCountEqual(self.corpus1.labels, self.labels1)
 
-    @unittest.skip("skipping read_row test")
-    def test_read_row(self):
-        pass
-        #self.corpus.read_row
+    def test_read_corpus_char_frequency(self):
+        self.assertCountEqual(self.corpus1.char_frequency, 
+            Counter(c for sent in self.sentences1 for w in sent for c in w))
+
+    def test_read_corpus_maxsentlen(self):
+        self.assertEqual(self.corpus1.maxsentlen, max(len(sent) for sent in self.sentences1))
+
+
+    def test_read_row_label(self):
+        new_corpus = Corpus()
+
+        with open(self.corpus1_filepath) as corpus_file:
+            corpus_reader = csv.reader(corpus_file, delimiter=dl)
+            next(corpus_reader)
+            for row in corpus_reader:
+               # 10% probability of checking a given row. 
+               # Test corpus must have at least 10 sentences
+               if random.random() < .1:
+                   new_corpus.read_row(row)
+                   label = new_corpus.label_word(row[2])
+                   # Assumption is made that this is now the only 
+                   # sentence/word in the corpus
+                   self.assertEqual(new_corpus.labels[0][0], label)
+                   break
+
+    def test_read_row_word(self):
+        new_corpus = Corpus()
+
+        with open(self.corpus1_filepath) as corpus_file:
+            corpus_reader = csv.reader(corpus_file, delimiter=dl)
+            next(corpus_reader)
+            for row in corpus_reader:
+               # 10% probability of checking a given row. 
+               # Test corpus must have at least 10 sentences
+               if random.random() < .1:
+                   new_corpus.read_row(row)
+                   word = (row[1])
+                   # Assumption is made that this is now the only 
+                   # sentence/word in the corpus
+                   self.assertEqual(new_corpus.sentences[0][0], word)
+                   break
+
+    def test_read_row_sentence(self):
+        new_corpus = Corpus()
+
+        with open(self.corpus1_filepath) as corpus_file:
+            corpus_reader = csv.reader(corpus_file, delimiter=dl)
+            next(corpus_reader)
+            for row in corpus_reader:
+               # 10% probability of checking a given row. 
+               # Test corpus must have at least 10 sentences
+               if random.random() < .1:
+                   new_corpus.read_row(row)
+                   label = new_corpus.label_word(row[2])
+                   self.assertEqual(new_corpus.labels[0][0], label)
+                   break
 
     def test_read_corpus_num_sentences(self):
         print(self.corpus.sentences)

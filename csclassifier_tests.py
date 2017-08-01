@@ -28,7 +28,7 @@ from keras.callbacks import ModelCheckpoint
 import utils
 import csclassifier
 
-from utils import Corpus, Corpus_Aaron
+from utils import Corpus, Corpus_CS_Langs
 from classifier import Classifier
 from csclassifier import CSClassifier
 
@@ -40,7 +40,7 @@ def main(corpus_folder_filepath, model, epochs=50, batch_size=25):
     # Ingest the corpora
     c_f_fp = Path(corpus_folder_filepath)
     corpora = {}
-    for f in c_f_fp.itderdir():
+    for f in c_f_fp.iterdir():
         if corpus_patt.match(f.name):
             corpus = Corpus_CS_Langs()
             corpus.read_corpus(f.name, dl=',')
@@ -72,14 +72,11 @@ def main(corpus_folder_filepath, model, epochs=50, batch_size=25):
 
     corpus = Corpus_CS_Langs(train=True)
 
-
-
-
     with open('csclassifier_test_results', 'w') as results_file:
         results_file.write("CSCLASSIFIER MODEL RESULTS:\n")
         for lang in metrics.keys():
             results_file.write("Training on " + str([train_lang 
-                    if train_lang != lang for train_lang in metrics.keys()]) + '\n')
+                    if train_lang != lang else None for train_lang in metrics.keys()]) + '\n')
             results_file.write("Testing on " + lang + '\n')
             for metric in metrics[lang].keys():
                 results_file.write(metric + ": " + metrics[lang][metric] + '\n')

@@ -11,7 +11,7 @@
 
 import csv
 import os
-
+import sys
 
 from collections import defaultdict
 from collections import Counter
@@ -23,7 +23,7 @@ from keras.utils import to_categorical
 
 from alphabet_detector import AlphabetDetector
 
-with open('unicode_alphabets.txt', 'r') as uc_file:
+with open(os.path.dirname(sys.argv[0]) + '/unicode_alphabets.txt', 'r') as uc_file:
     alphabets = set([alphabet for alphabet in uc_file])
 
 class Corpus():
@@ -84,13 +84,12 @@ class Corpus():
         corpus_filepath -- The filepath to a normalized corpus
         """
         self.corpus_filepath = corpus_filepath
-
+        print(corpus_filepath)
         with open(corpus_filepath) as corpus_file:
             corpus_reader = csv.reader(corpus_file, delimiter=dl)
 
             # Skip the header
             next(corpus_reader)
-
             for row in corpus_reader:
                 self.read_row(row)
 
@@ -101,6 +100,7 @@ class Corpus():
             self.maxsentlen = max(self.maxsentlen, len(sentence))
 
     def read_row(self, row):
+
         """Reads a csv row and updates the Corpus variables.
     
         Keyword arguments:
@@ -118,7 +118,7 @@ class Corpus():
         label = self.label_word(row[2])
 
         # Remove the word id at the end of the sentence name
-        sname = ''.join(row[0].split(sep='_')[0:4])
+        sname = ''.join(row[0].split(sep='_')[:])
 
         if sname not in self.sentence2sidx:
            self.add_sentence(sname)
@@ -263,7 +263,7 @@ class Corpus_CS_Langs(Corpus):
                       indices to characters
         """
         label2idx = {'<PAD>':0, 'no_cs': 1, 'cs':2}
-        idx2label = {i:l for l, i in self.label2idx.items()}
+        idx2label = {i:l for l, i in label2idx.items()}
 
         Corpus.__init__(self, char_dictionary,
                 label_dictionary=(label2idx,idx2label))
@@ -285,7 +285,7 @@ class Corpus_CS_Langs(Corpus):
 
     def read_corpus(self, corpus_filepath, dl):
         self.lang_stream = None
-        Corpus.read_corpus(corpus_filepath, dl)
+        Corpus.read_corpus(self, corpus_filepath, dl)
 
     def add_sentence(self, sname):
         Corpus.add_sentence(sname)
