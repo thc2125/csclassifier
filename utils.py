@@ -59,10 +59,10 @@ class Corpus():
     # TODO: Need to fix this so that tests don't fail
     def __add__(self, other):
         corp = Corpus()
-        return self.__combine(corp, other)
+        return self._combine(corp, other)
         
 
-    def __combine(self, corp, other):
+    def _combine(self, corp, other):
         corp.sidx = len(self.sentences)
         corp.sentences = self.sentences + other.sentences
         corp.labels = self.labels + other.labels
@@ -118,7 +118,7 @@ class Corpus():
         label = self.label_word(row[2])
 
         # Remove the word id at the end of the sentence name
-        sname = ''.join(row[0].split(sep='_')[:])
+        sname = ''.join(row[0].split(sep='_')[:-1])
 
         if sname not in self.sentence2sidx:
            self.add_sentence(sname)
@@ -251,7 +251,7 @@ class Corpus_Aaron(Corpus):
 
     def __add__(self, other):
         corp = Corpus_Aaron()
-        return self.__combine(corp, other)
+        return Corpus._combine(self, corp, other)
 
 
 class Corpus_CS_Langs(Corpus):
@@ -270,8 +270,7 @@ class Corpus_CS_Langs(Corpus):
 
     def __add__(self, other):
         corp = Corpus_CS_Langs()
-        return self.__combine(corp, other)
-
+        return Corpus._combine(self, corp, other)
 
     def label_word(self, label):
        if self.lang_stream == None:
@@ -288,7 +287,7 @@ class Corpus_CS_Langs(Corpus):
         Corpus.read_corpus(self, corpus_filepath, dl)
 
     def add_sentence(self, sname):
-        Corpus.add_sentence(sname)
+        Corpus.add_sentence(self, sname)
         # Note that the corpus must have words in sentences ordered and
         # row adjacent
         self.lang_stream = None
