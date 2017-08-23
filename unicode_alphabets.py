@@ -1,3 +1,11 @@
+# NOTE: Alphabets in set are distinguised by first word in cse of word phrases
+# This is to maintain compatibility with alphabet_detector module
+# It should have no effect as the first word is unique in all cases 
+# except Japanese
+# All alphabets prefixed with "OLD" have been removed for the purposes 
+# of CSClassifier
+# Additionally, all of the 'TAI' alphabets have also been removed as they 
+# cannot be distinguished from one another using alphabet_detector
 alphabets = {"ARABIC",
 "ARMENIAN",
 "AVESTAN",
@@ -8,20 +16,20 @@ alphabets = {"ARABIC",
 "BATAK",
 "BELARUSIAN",
 "BENGALI",
-"BOPOMOFO. ZHUYIN",
+"BOPOMOFO.", #BOPOMOFO. ZHUYIN
 "BRAHMI",
 "BUGINESE",
 "BUHID",
 "BULGARIAN",
 "CARIAN",
-"CAUCASIAN ALBANIAN",
+"CAUCASIAN", #CAUCASIAN ALBANIAN
 "CHAKMA",
 "CHAM",
 "CHEROKEE",
-"CHINESE PINYIN",
+"CHINESE", #CHINESE PINYIN
 "CJK",
 "COPTIC",
-"CYPRIOT ",
+"CYPRIOT",
 "CYRILLIC",
 "CZECH",
 "DESERET",
@@ -29,7 +37,7 @@ alphabets = {"ARABIC",
 "ELBASAN",
 "ENGLISH",
 "ESPERANTO",
-"ETHIOPIC GEʻEZ",
+"ETHIOPIC", #ETHIOPIC GEʻEZ
 "FRENCH",
 "GEORGIAN",
 "GERMAN",
@@ -43,15 +51,15 @@ alphabets = {"ARABIC",
 "HANUNOO",
 "HEBREW",
 "HUNGARIAN",
-"IMPERIAL ARAMAIC",
-"INTERNATIONAL PHONETIC",
+"IMPERIAL", #IMPERIAL ARAMAIC
+"INTERNATIONAL", #INTERNATIONAL PHONETIC
 "ITALIAN",
-"JAPANESE HIRAGANA",
-"JAPANESE KATAKANA",
+"JAPANESE",  #JAPANESE HIRAGANA
+             #JAPANESE KATAKANA
 "JAVANESE",
 "KAITHI",
 "KANNADA",
-"KAYAH LI",
+"KAYAH", #KAYAH LI
 "KAZAKH",
 "KHAROSHTHI",
 "KHMER",
@@ -61,7 +69,7 @@ alphabets = {"ARABIC",
 "LATIN",
 "LEPCHA",
 "LIMBU",
-"LINEAR B ",
+"LINEAR",  #LINEAR B
 "LISU",
 "LYCIAN",
 "LYDIAN",
@@ -69,30 +77,30 @@ alphabets = {"ARABIC",
 "MALAYALAM",
 "MANDAIC",
 "MANICHAEAN",
-"MEETEI MAYEK",
-"MENDE KIKAKUI",
-"MEROITIC CURSIVE",
+"MEETEI", #MEETEI MAYEK
+"MENDE", #MENDE KIKAKUI
+"MEROITIC", #MEROITIC CURSIVE
 "MODI",
 "MONGOLIAN",
 "MRO",
 "MYANMAR",
 "NABATAEAN",
-"NEW TAI LUE",
+"NEW", #NEW TAI LUE
 "NGHAM",
 "NKO",
-"OL CHIKI",
-"OLD ITALIC ETRUSCAN",
-"OLD NORTH ARABIAN",
-"OLD PERMIC",
-"OLD PERSIAN",
-"OLD SOUTH ARABIAN",
-"OLD TURKIC RUNIC",
+"OL", #OL CHIKI
+#"OLD ITALIC ETRUSCAN",
+#"OLD NORTH ARABIAN",
+#"OLD PERMIC",
+#"OLD PERSIAN",
+#"OLD SOUTH ARABIAN",
+#"OLD TURKIC RUNIC",
 "ORIYA",
 "OSMANYA",
-"PAHAWH HMONG",
+"PAHAWH", #PAHAWH HMONG
 "PAHLAVI",
 "PALMYRENE",
-"PAU CIN HAU",
+"PAU", #PAU CIN HAU
 "PHAGS-PA",
 "PHOENICIAN",
 "POLISH",
@@ -106,16 +114,16 @@ alphabets = {"ARABIC",
 "SHAVIAN",
 "SIDDHAM",
 "SINHALA",
-"SORA SOMPENG",
+"SORA",  #SORA SOMPENG
 "SPANISH",
 "SUNDANESE",
-"SYLOTI NAGRI",
+"SYLOTI", #SYLOTI NAGRI
 "SYRIAC",
 "TAGALOG",
 "TAGBANWA",
-"TAI LE",
-"TAI THAM",
-"TAI VIET",
+#"TAI LE",
+#"TAI THAM",
+#"TAI VIET",
 "TAKRI",
 "TAMIL",
 "TATAR",
@@ -128,7 +136,7 @@ alphabets = {"ARABIC",
 "TURKISH",
 "UGARITIC",
 "UKRAINIAN",
-"UNIFIED CANADIAN ABORIGINAL ",
-"VAI ",
-"VARANG KSHITI",
-"YI "}
+"UNIFIED", #UNIFIED CANADIAN ABORIGINAL 
+"VAI",
+"VARANG", #VARANG KSHITI
+"YI"}
