@@ -6,7 +6,7 @@ from keras.layers import Input, Embedding, Conv1D, Dropout, GlobalMaxPooling1D
 from keras.layers import Dense, Merge, TimeDistributed, Bidirectional, LSTM
 from keras.layers import add, concatenate
 from keras.models import Model
-from keras.utils import plot_model
+#from keras.utils import plot_model
 
 
 class Classifier:
@@ -96,5 +96,5 @@ class Classifier:
         # Note that 'adam' has a default learning rate of .001
         self.model.compile(loss='categorical_crossentropy', optimizer='adam', 
             metrics=['categorical_accuracy'], sample_weight_mode='temporal')
-        plot_model(self.model, show_shapes=True)
+        #plot_model(self.model, show_shapes=True)
 
