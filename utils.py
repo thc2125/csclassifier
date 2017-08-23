@@ -213,7 +213,7 @@ class Corpus():
         if self.use_alphabets:
             print(c)
             alph = list(self.ad.detect_alphabet(c))
-            if alph:
+            if alph and alph[0] in alphabets:
                 unk += alph[0]
         return unk
 
