@@ -12,23 +12,24 @@
 import csv
 import os
 import sys
+import random
 
 from collections import defaultdict
 from collections import Counter
-from math import sqrt
-from random import random
+from math import sqrt, floor
+from pathlib import Path
+from copy import deepcopy
 
 import numpy as np
 from keras.utils import to_categorical
 
 from alphabet_detector import AlphabetDetector
+from unicode_alphabets import alphabets
 
-with open(os.path.dirname(sys.argv[0]) + '/unicode_alphabets.txt', 'r') as uc_file:
-    alphabets = set([alphabet for alphabet in uc_file])
 
 class Corpus():
     def __init__(self, char_dictionary=(None, None), 
-        label_dictionary=(None, None), train=False):
+        label_dictionary=(None, None), train=False, use_alphabets=False):
         """Reads in a corpus file and sets the corpus variables.
     
         Keyword arguments:
@@ -44,6 +45,9 @@ class Corpus():
         # We also need a set of labels for each word
         self.label2idx, self.idx2label = label_dictionary
         self.train = train
+        self.use_alphabets = use_alphabets
+        if use_alphabets:
+            self.ad = AlphabetDetector()
         self.__init_data()
 
     def __init_data(self):
@@ -66,14 +70,18 @@ class Corpus():
         corp.sidx = len(self.sentences)
         corp.sentences = self.sentences + other.sentences
         corp.labels = self.labels + other.labels
-        corp.sentence2sidx = {s : (i + self.sidx) for s, i in
-                other.sentence2sidx.items()}
+        corp.sentence2sidx = self.sentence2sidx.copy() 
+        corp.sentence2sidx.update({s : (i + self.sidx) for s, i in 
+                other.sentence2sidx.items()})
         corp.sidx = len(corp.sentences)
         corp.maxsentlen = max(self.maxsentlen, other.maxsentlen)
         corp.maxwordlen = max(self.maxwordlen, other.maxwordlen)
         # TODO: Is it okay to turn a defaultdict into a counter?
         corp.char_frequency = (Counter(self.char_frequency) 
             + Counter(other.char_frequency))
+        corp.train = True if (self.train or other.train) else False
+        corp.use_alphabets = self.use_alphabets or other.use_alphabets
+
         return corp
 
 
@@ -156,15 +164,14 @@ class Corpus():
     def idx_conversion(self, maxsentlen, maxwordlen):
         # Convert words to indices 
         # And pad the sentences and labels
-        ab = AlphabetDetector()
         if self.idx2char == None or self.char2idx == None:
             self.create_dictionary()
         # Create a list of lists of lists of indices
         # Randomly assign some letters the index of unknown characters for a 
         # given alphabet
         list_sentences = ([[[(self.char2idx[c] 
-                         if c in self.char2idx and not self.unk_replace(c)
-                         else self.char2idx['unk' + ab.detect_alphabet(c)[0]])
+                         if (c in self.char2idx and not self.unk_replace(c))
+                         else self.char2idx[self.get_unk(c)])
                      for c in word]
                 + [0]*(maxwordlen-len(word)) 
             for word in sentence]
@@ -196,18 +203,27 @@ class Corpus():
         t = .00001
         f = self.char_frequency[c]
         p = 1 - sqrt(t/f)
-        if random() > p:
-            return False
-        else:
+        if random.random() > p:
             return True
+        else:
+            return False
 
-    def create_dictionary(self, use_alphabets=False):
+    def get_unk(self, c):
+        unk = 'unk'
+        if self.use_alphabets:
+            print(c)
+            alph = list(self.ad.detect_alphabet(c))
+            if alph:
+                unk += alph[0]
+        return unk
+
+    def create_dictionary(self):
         self.idx2char = []
         # Set the zero index to the null character
-        self.idx2char.append(0)
+        self.idx2char.append('\0')
         self.char2idx = defaultdict(int)
         # set the null character index to zero
-        self.char2idx[0] = 0
+        self.char2idx['\0'] = 0
 
         for sentence in self.sentences:
             for word in sentence:
@@ -217,21 +233,54 @@ class Corpus():
                         self.idx2char.append(c)
 
 
-        if use_alphabets:
+        if self.use_alphabets:
             # Add indices for unseen chars for each alphabet representable 
             # by unicode
             for a in alphabets:
                 self.char2idx['unk' + a] += len(self.idx2char)
                 self.idx2char.append('unk' + a)
-        else:
-            self.char2idx['unk'] += len(self.idx2char)
-            self.idx2char.append('unk')
+        # Finally add a generic unknown character
+        self.char2idx['unk'] += len(self.idx2char)
+        self.idx2char.append('unk')
 
-        
         return self.char2idx, self.idx2char
 
-    #def split_corpus(self
+    def randomly_split_corpus(self, split=.9, new_corpus1=None, new_corpus2=None):
+        
+        if not new_corpus1:
+            new_corpus1 = Corpus(train=True, use_alphabets=self.use_alphabets)
+        if not new_corpus2:
+            new_corpus2 = Corpus()
+        self._split(split=split, new_corpus1=new_corpus1, 
+            new_corpus2=new_corpus2)
+        return new_corpus1, new_corpus2
 
+    def _split(self, split, new_corpus1, new_corpus2):
+        sentence2sidx = list(deepcopy(self.sentence2sidx).items())
+        random.shuffle(sentence2sidx)
+        split_point = floor(split*len(sentence2sidx))
+        for sname, idx in sentence2sidx[:split_point]:
+                new_corpus1.ext_add_sentence(self.sentences[idx], 
+                    self.labels[idx], sname)
+        for sname, idx in sentence2sidx[split_point:]:
+                new_corpus2.ext_add_sentence(self.sentences[idx], 
+                    self.labels[idx], sname)
+
+    def ext_add_sentence(self, sentence, labels, sname):
+        self.sentence2sidx[sname]=len(self.sentences)
+
+        self.sentences.append(sentence)
+        for word in sentence:
+            for c in word:
+                self.char_frequency[c] += 1
+
+        self.labels.append(labels)
+
+        self.maxsentlen = max(self.maxsentlen, len(sentence))
+        self.maxwordlen = max(self.maxwordlen, 
+            max([len(w) for w in sentence]))
+        self.sidx = len(self.sentences)
+                
 class Corpus_Aaron(Corpus):
     def __init__(self, char_dictionary=(None, None), label_dictionary=(None, None)):
         """Reads in a corpus file and sets the corpus variables.
@@ -255,7 +304,7 @@ class Corpus_Aaron(Corpus):
 
 
 class Corpus_CS_Langs(Corpus):
-    def __init__(self, char_dictionary=(None, None), train=False):
+    def __init__(self, char_dictionary=(None, None), train=False, use_alphabets=False):
         """Reads in a corpus file and sets the corpus variables.
     
         Keyword arguments:
@@ -266,7 +315,8 @@ class Corpus_CS_Langs(Corpus):
         idx2label = {i:l for l, i in label2idx.items()}
 
         Corpus.__init__(self, char_dictionary,
-                label_dictionary=(label2idx,idx2label))
+                label_dictionary=(label2idx,idx2label), train=train, 
+                 use_alphabets=use_alphabets)
 
     def __add__(self, other):
         corp = Corpus_CS_Langs()
@@ -291,6 +341,13 @@ class Corpus_CS_Langs(Corpus):
         # Note that the corpus must have words in sentences ordered and
         # row adjacent
         self.lang_stream = None
+
+    def randomly_split_corpus(self, split=.9):
+        new_corpus1 = Corpus_CS_Langs(train=True, use_alphabets=self.use_alphabets)
+        new_corpus2 = Corpus_CS_Langs(use_alphabets=self.use_alphabets)
+        return Corpus.randomly_split_corpus(self, split=split, 
+            new_corpus1=new_corpus1, new_corpus2=new_corpus2)
+
 
 def print_np_sentences(np_sentences, idx2char):
     """Prints all sentences in the corpus."""

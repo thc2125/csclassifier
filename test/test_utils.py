@@ -9,7 +9,6 @@ from collections import defaultdict
 from collections import Counter
 
 
-
 word_col = 1
 dl = ','
 
@@ -26,8 +25,8 @@ class CorpusTestCase(unittest.TestCase):
         self.test_idx2label = {i:l for l, i in self.test_label2idx.items()}
         self.corpus1 = Corpus(label_dictionary=(self.test_label2idx, self.test_idx2label))
         self.corpus2 = Corpus(label_dictionary=(self.test_label2idx, self.test_idx2label))
-        self.corpus1_filepath = 'tests/data/corpus1_file.csv'
-        self.corpus2_filepath = 'tests/data/corpus2_file.csv'
+        self.corpus1_filepath = 'test/data/corpus1_file.csv'
+        self.corpus2_filepath = 'test/data/corpus2_file.csv'
         self.corpus1_num_words = self.get_num_words(self.corpus1_filepath, 0)
                 
         self.corpus1.read_corpus(self.corpus1_filepath, dl=dl)
@@ -58,9 +57,9 @@ class CorpusTestCase(unittest.TestCase):
             for row in corpus_reader:
                 if len(row[1]) > 34:
                     continue
-                sentences[row[0]].append(row[1])
-                labels[row[0]].append(row[2])
-
+                sname = ''.join(row[0].split(sep='_')[:-1])
+                sentences[sname].append(row[1])
+                labels[sname].append(row[2])
         return sentences.values(), labels.values()
 
     def test___init___char_dictionary(self):
@@ -103,7 +102,7 @@ class CorpusTestCase(unittest.TestCase):
     def test___add___sentence_elements(self):
         new_corpus = self.corpus1 + self.corpus2
         new_sentences = self.corpus1.sentences + self.corpus2.sentences
-        self.assertCountEqual(new_corpus.sentences, new_sentences)
+        self.assertEqual(new_corpus.sentences, new_sentences)
 
     def test___add___bookkeeping(self):
         new_corpus = self.corpus1 + self.corpus2
@@ -121,13 +120,13 @@ class CorpusTestCase(unittest.TestCase):
         self.assertEqual(new_corpus.char_frequency, new_char_frequency)
 
     def test_read_corpus_sentences(self):
-        self.assertCountEqual(self.corpus1.sentences, self.sentences1)
+        self.assertEqual(sorted(self.corpus1.sentences), sorted(self.sentences1))
 
     def test_read_corpus_labels(self):
-        self.assertCountEqual(self.corpus1.labels, self.labels1)
+        self.assertEqual(sorted(self.corpus1.labels), sorted(self.labels1))
 
     def test_read_corpus_char_frequency(self):
-        self.assertCountEqual(self.corpus1.char_frequency, 
+        self.assertEqual(self.corpus1.char_frequency, 
             Counter(c for sent in self.sentences1 for w in sent for c in w))
 
     def test_read_corpus_maxsentlen(self):
@@ -183,19 +182,37 @@ class CorpusTestCase(unittest.TestCase):
                    self.assertEqual(new_corpus.labels[0][0], label)
                    break
 
-    def test_read_corpus_num_sentences(self):
-        print(self.corpus.sentences)
-        self.assertEqual(self.corpus1_num_words, len(self.corpus.sentences))
+    def test_read_corpus_num_words(self):
+        self.assertEqual(self.corpus1_num_words, 
+            sum([len(sentence) for sentence in self.corpus1.sentences]))
 
-        pass
 
     def test_read_corpus_num_sentences(self):
-        self.assertEqual(self.corpus1_num_words, len(self.corpus1.sentences))
-        pass
+        self.assertEqual(len(self.sentences1), len(self.corpus1.sentences))
 
     def test_read_corpus_num_labels(self):
-        self.assertEqual(self.corpus1_num_words, len(self.corpus1.labels))
-        pass
+        self.assertEqual(self.corpus1_num_words, 
+            sum([len(labels) for labels in self.corpus1.labels]))
+
+    def test_randomly_split_corpus_len_sentences(self):
+        train_corpus, test_corpus = self.corpus1.randomly_split_corpus()
+        self.assertEqual(len(self.corpus1.sentences), len(train_corpus.sentences) + len(test_corpus.sentences))
+
+    def test_randomly_split_corpus_len_labels(self):
+        train_corpus, test_corpus = self.corpus1.randomly_split_corpus()
+        print(len(train_corpus.labels))
+        print(len(test_corpus.labels))
+        self.assertEqual(len(self.corpus1.labels), len(train_corpus.labels) + len(test_corpus.labels))
+
+    def test_randomly_split_corpus_reconstitute_labels(self):
+        train_corpus, test_corpus = self.corpus1.randomly_split_corpus()
+        self.assertEqual(sorted(self.corpus1.labels), 
+            sorted(train_corpus.labels + test_corpus.labels))
+
+    def test_randomly_split_corpus_reconstitute_sentences(self):
+        train_corpus, test_corpus = self.corpus1.randomly_split_corpus()
+        self.assertEqual(sorted(self.corpus1.sentences), 
+            sorted(train_corpus.sentences + test_corpus.sentences))
 
 
 
