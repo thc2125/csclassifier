@@ -39,7 +39,7 @@ class CSClassifier():
         self.epochs = epochs
         self.batch_size = batch_size
 
-    def generate_model(self, train_corpus, test_langs, model=None):
+    def generate_model(self, train_corpus, test_langs, model=None, output_dirname='.'):
         #train_split = [ceil(9 * len(corpus.sentences)/10)]
         #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
         if train_corpus.maxsentlen > self.maxsentlen or train_corpus.maxwordlen > self.maxwordlen:
@@ -47,10 +47,17 @@ class CSClassifier():
 
         train_sentences, train_labels, train_labels_weights = train_corpus.np_idx_conversion(self.maxsentlen,
             self.maxwordlen)
-
-        utils.print_np_sentence(train_sentences[120], self.idx2char) 
-        utils.print_np_label(train_labels[120], self.idx2label)
-        print(train_labels_weights[120])
+        print()
+        #print(sorted(train_corpus.char_frequency.items(), key=lambda x:x[1]))
+        print()
+        print(train_corpus.sentences[20])
+        print(train_corpus.idx2char)
+        #print(sorted(train_corpus.char2idx.items(),key=lambda x: x[1]))
+        print(train_sentences[20])
+        #print(sorted(train_corpus.char_frequency.items()))
+        utils.print_np_sentence(train_sentences[20], self.idx2char) 
+        utils.print_np_label(train_labels[20], self.idx2label)
+        print(train_labels_weights[20])
 
         num_labels = len(self.label2idx)
 
@@ -62,12 +69,13 @@ class CSClassifier():
             self.classifier.model = load_model(model)
         else:
             # Train the model
-            checkpoint = ModelCheckpoint(filepath='checkpoints/checkpoint_'+test_langs+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
+            checkpoint = ModelCheckpoint(
+                filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
             self.classifier.model.fit(x=train_sentences, y=train_labels,
                 epochs=self.epochs, batch_size=self.batch_size, validation_split=.1,
                 sample_weight=train_labels_weights, callbacks=[checkpoint])
             # Save the model
-            self.classifier.model.save('cs_classifier_model_' + test_langs + '.h5')
+            self.classifier.model.save(output_dirname + '/cs_classifier_model_' + test_langs + '.h5')
         return self.classifier
 
     def evaluate_model(self, test_corpus):
