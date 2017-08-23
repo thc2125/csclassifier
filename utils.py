@@ -326,7 +326,7 @@ class Corpus_CS_Langs(Corpus):
        if self.lang_stream == None:
            self.lang_stream = label
            return 'no_cs'
-       elif (label != 'other' and label != self.lang_stream):
+       elif (label != 'other' and label != 'punct' and label != self.lang_stream):
            self.lang_stream = label
            return 'cs'
        else:
