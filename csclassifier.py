@@ -20,7 +20,7 @@ from math import ceil
 
 import numpy as np
 from keras.models import load_model
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, EarlyStopping
 
 import utils
 
@@ -71,9 +71,13 @@ class CSClassifier():
             # Train the model
             checkpoint = ModelCheckpoint(
                 filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
+            stop_early = EarlyStopping(
+                monitor='val_categorical_accuracy',
+                patience=5)
             self.classifier.model.fit(x=train_sentences, y=train_labels,
                 epochs=self.epochs, batch_size=self.batch_size, validation_split=.1,
-                sample_weight=train_labels_weights, callbacks=[checkpoint])
+                sample_weight=train_labels_weights, 
+                callbacks=[checkpoint, stop_early])
             # Save the model
             self.classifier.model.save(output_dirname + '/cs_classifier_model_' + test_langs + '.h5')
         return self.classifier
