@@ -47,6 +47,7 @@ class CSClassifier():
 
         train_sentences, train_labels, train_labels_weights = train_corpus.np_idx_conversion(self.maxsentlen,
             self.maxwordlen)
+        '''
         print()
         #print(sorted(train_corpus.char_frequency.items(), key=lambda x:x[1]))
         print()
@@ -58,6 +59,7 @@ class CSClassifier():
         utils.print_np_sentence(train_sentences[20], self.idx2char) 
         utils.print_np_label(train_labels[20], self.idx2label)
         print(train_labels_weights[20])
+        '''
 
         num_labels = len(self.label2idx)
 
@@ -69,8 +71,9 @@ class CSClassifier():
             self.classifier.model = load_model(model)
         else:
             # Train the model
+            alph = 'alph' if train_corpus.use_alphabets else ''
             checkpoint = ModelCheckpoint(
-                filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
+                filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'_'+alph.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
             stop_early = EarlyStopping(
                 monitor='val_categorical_accuracy',
                 patience=5)
