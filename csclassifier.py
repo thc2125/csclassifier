@@ -20,82 +20,89 @@ from math import ceil
 
 import numpy as np
 from keras.models import load_model
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, EarlyStopping
 
 import utils
 
 from utils import Corpus, Corpus_Aaron
 from classifier import Classifier
 
-def main(corpus_filepath, model, epochs=50, batch_size=25):
-    # Ingest the corpus
-    corpus = Corpus()
-    corpus.read_corpus(corpus_filepath, dl=',')
-    char2idx, idx2char = corpus.create_dictionary()
+class CSClassifier():
+    def __init__(self, maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
+        idx2char, epochs, batch_size):
+        self.maxsentlen = maxsentlen
+        self.maxwordlen = maxwordlen
+        self.label2idx = label2idx
+        self.idx2label = idx2label
+        self.char2idx = char2idx
+        self.idx2char = idx2char
+        self.epochs = epochs
+        self.batch_size = batch_size
 
-    train_split = [ceil(9 * len(corpus.sentences)/10)]
-    #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
+    def generate_model(self, train_corpus, test_langs, model=None, output_dirname='.'):
+        #train_split = [ceil(9 * len(corpus.sentences)/10)]
+        #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
+        if train_corpus.maxsentlen > self.maxsentlen or train_corpus.maxwordlen > self.maxwordlen:
+            raise Exception("'train_corpus' has greater maxsentlen or maxwordlen")
 
-    maxsentlen = corpus.maxsentlen
-    maxwordlen = corpus.maxwordlen
+        train_sentences, train_labels, train_labels_weights = train_corpus.np_idx_conversion(self.maxsentlen,
+            self.maxwordlen)
+        print()
+        #print(sorted(train_corpus.char_frequency.items(), key=lambda x:x[1]))
+        print()
+        print(train_corpus.sentences[20])
+        print(train_corpus.idx2char)
+        #print(sorted(train_corpus.char2idx.items(),key=lambda x: x[1]))
+        print(train_sentences[20])
+        #print(sorted(train_corpus.char_frequency.items()))
+        utils.print_np_sentence(train_sentences[20], self.idx2char) 
+        utils.print_np_label(train_labels[20], self.idx2label)
+        print(train_labels_weights[20])
 
-    sentences, labels, labels_weights = corpus.np_idx_conversion(maxsentlen,
-        maxwordlen)
+        num_labels = len(self.label2idx)
 
-    train_sentences, test_sentences = np.split(sentences, train_split)
-    train_labels, test_labels = np.split(labels, train_split)
-    train_labels_weights, _ = np.split(labels_weights, train_split)
+        # Build the model
+        self.classifier = Classifier(self.char2idx, self.maxsentlen, self.maxwordlen, num_labels)
 
-    label2idx = corpus.label2idx
-    idx2label = corpus.idx2label
+        if model != None:
+            # Load the model
+            self.classifier.model = load_model(model)
+        else:
+            # Train the model
+            checkpoint = ModelCheckpoint(
+                filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
+            stop_early = EarlyStopping(
+                monitor='val_categorical_accuracy',
+                patience=5)
+            self.classifier.model.fit(x=train_sentences, y=train_labels,
+                epochs=self.epochs, batch_size=self.batch_size, validation_split=.1,
+                sample_weight=train_labels_weights, 
+                callbacks=[checkpoint, stop_early])
+            # Save the model
+            self.classifier.model.save(output_dirname + '/cs_classifier_model_' + test_langs + '.h5')
+        return self.classifier
 
-    utils.print_np_sentence(train_sentences[20], idx2char) 
-    utils.print_np_label(train_labels[20], idx2label)
-    print(train_labels_weights[20])
+    def evaluate_model(self, test_corpus):
+        # Evaluate the model
+        #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
+        #print(evaluation)
+        #TODO: remove the following two commented out lines
+        #maxsentlen = train_corpus.maxsentlen
+        #maxwordlen = train_corpus.maxwordlen
+        test_sentences, test_labels, test_labels_weights = test_corpus.np_idx_conversion(self.maxsentlen,
+            self.maxwordlen)
 
+        print("Testing on sentences of shape: " + str(test_sentences.shape))
+        pred_labels = self.classifier.model.predict(x=test_sentences)
 
-    num_labels = len(corpus.label2idx)
+        # Transform labels to represent category index
+        test_cat_labels = np.argmax(test_labels, axis=2)
+        pred_cat_labels = np.argmax(pred_labels, axis=2)
 
-    # Build the model
-    classifier = Classifier(char2idx, maxsentlen, maxwordlen, num_labels)
-
-    if model != None:
-        # Load the model
-        classifier.model = load_model(model)
-    else:
-        # Train the model
-        checkpoint = ModelCheckpoint(filepath='checkpoint.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
-        classifier.model.fit(x=train_sentences, y=train_labels,
-            epochs=epochs, batch_size=batch_size, validation_split=.1,
-            sample_weight=train_labels_weights, callbacks=[checkpoint])
-        # Save the model
-        classifier.model.save('cs_classifier_model.h5')
-
-    # Evaluate the model
-    #evaluation = classifier.model.evaluate(x=test_sentences, y=test_cs, batch_size=batch_size)
-    #print(evaluation)
-    print("Testing on sentences of shape: " + str(test_sentences.shape))
-    pred_labels = classifier.model.predict(x=test_sentences)
-
-    # Transform labels to represent category index
-    test_cat_labels = np.argmax(test_labels, axis=2)
-    pred_cat_labels = np.argmax(pred_labels, axis=2)
-
-    metrics = (utils.compute_accuracy_metrics(
-        test_cat_labels, pred_cat_labels, label2idx))
-    for metric in metrics:
-        if metric == 'confusion_matrix':
-            continue
-        print(metric + ": " + str(metrics[metric]))
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A neural network based'
-        + 'classifier for detecting code switching.') 
-    parser.add_argument('corpus_filepath', metavar='C', type=str,
-            help='Filepath to the corpus.')
-    parser.add_argument('--model', metavar='M', type=str,
-            help='Optional pre-trained model to load into classifier.')
-
-    args = parser.parse_args()
-    #main(args.corpus_filepath)
-    main(args.corpus_filepath, args.model)
+        metrics = (utils.compute_accuracy_metrics(
+            test_cat_labels, pred_cat_labels, self.label2idx))
+        for metric in metrics:
+            if metric == 'confusion_matrix':
+                continue
+            print(metric + ": " + str(metrics[metric]))
+        return metrics

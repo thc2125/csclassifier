@@ -28,12 +28,15 @@ from utils import Corpus, Corpus_Aaron
 from classifier import Classifier
 
 def main(train_corpus_filepath, test_corpus_filepath, model, weigh_labels, epochs=20, batch_size=25):
+
+
     # Ingest the corpus
     train_corpus = Corpus_Aaron()
     train_corpus.read_corpus(train_corpus_filepath, dl='\t')
     char2idx, idx2char = train_corpus.create_dictionary()
 
-    test_corpus = Corpus_Aaron(dictionary=(char2idx, idx2char))
+    test_corpus = Corpus_Aaron(char_dictionary=(char2idx, idx2char),
+            label_dictionary=(label2idx, idx2label))
     test_corpus.read_corpus(test_corpus_filepath, dl='\t')
     maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
     maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)   

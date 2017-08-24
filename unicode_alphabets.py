@@ -1,0 +1,142 @@
+# NOTE: Alphabets in set are distinguised by first word in cse of word phrases
+# This is to maintain compatibility with alphabet_detector module
+# It should have no effect as the first word is unique in all cases 
+# except Japanese
+# All alphabets prefixed with "OLD" have been removed for the purposes 
+# of CSClassifier
+# Additionally, all of the 'TAI' alphabets have also been removed as they 
+# cannot be distinguished from one another using alphabet_detector
+alphabets = {"ARABIC",
+"ARMENIAN",
+"AVESTAN",
+"BALINESE",
+"BAMUM",
+"BASHKIR",
+"BASSA-VAH",
+"BATAK",
+"BELARUSIAN",
+"BENGALI",
+"BOPOMOFO.", #BOPOMOFO. ZHUYIN
+"BRAHMI",
+"BUGINESE",
+"BUHID",
+"BULGARIAN",
+"CARIAN",
+"CAUCASIAN", #CAUCASIAN ALBANIAN
+"CHAKMA",
+"CHAM",
+"CHEROKEE",
+"CHINESE", #CHINESE PINYIN
+"CJK",
+"COPTIC",
+"CYPRIOT",
+"CYRILLIC",
+"CZECH",
+"DESERET",
+"DEVANAGARI",
+"ELBASAN",
+"ENGLISH",
+"ESPERANTO",
+"ETHIOPIC", #ETHIOPIC GEʻEZ
+"FRENCH",
+"GEORGIAN",
+"GERMAN",
+"GLAGOLITIC",
+"GOTHIC",
+"GRANTHA",
+"GREEK",
+"GUJARATI",
+"GURMUKHI",
+"HANGUL",
+"HANUNOO",
+"HEBREW",
+"HUNGARIAN",
+"IMPERIAL", #IMPERIAL ARAMAIC
+"INTERNATIONAL", #INTERNATIONAL PHONETIC
+"ITALIAN",
+"JAPANESE",  #JAPANESE HIRAGANA
+             #JAPANESE KATAKANA
+"JAVANESE",
+"KAITHI",
+"KANNADA",
+"KAYAH", #KAYAH LI
+"KAZAKH",
+"KHAROSHTHI",
+"KHMER",
+"KHOJKI",
+"KHUDAWADI",
+"LAO",
+"LATIN",
+"LEPCHA",
+"LIMBU",
+"LINEAR",  #LINEAR B
+"LISU",
+"LYCIAN",
+"LYDIAN",
+"MAHAJANI",
+"MALAYALAM",
+"MANDAIC",
+"MANICHAEAN",
+"MEETEI", #MEETEI MAYEK
+"MENDE", #MENDE KIKAKUI
+"MEROITIC", #MEROITIC CURSIVE
+"MODI",
+"MONGOLIAN",
+"MRO",
+"MYANMAR",
+"NABATAEAN",
+"NEW", #NEW TAI LUE
+"NGHAM",
+"NKO",
+"OL", #OL CHIKI
+#"OLD ITALIC ETRUSCAN",
+#"OLD NORTH ARABIAN",
+#"OLD PERMIC",
+#"OLD PERSIAN",
+#"OLD SOUTH ARABIAN",
+#"OLD TURKIC RUNIC",
+"ORIYA",
+"OSMANYA",
+"PAHAWH", #PAHAWH HMONG
+"PAHLAVI",
+"PALMYRENE",
+"PAU", #PAU CIN HAU
+"PHAGS-PA",
+"PHOENICIAN",
+"POLISH",
+"POLLARD",
+"REJANG",
+"RUNIC",
+"RUSSIAN",
+"SAMARITAN",
+"SAURASHTRA",
+"SHARADA",
+"SHAVIAN",
+"SIDDHAM",
+"SINHALA",
+"SORA",  #SORA SOMPENG
+"SPANISH",
+"SUNDANESE",
+"SYLOTI", #SYLOTI NAGRI
+"SYRIAC",
+"TAGALOG",
+"TAGBANWA",
+#"TAI LE",
+#"TAI THAM",
+#"TAI VIET",
+"TAKRI",
+"TAMIL",
+"TATAR",
+"TELUGU",
+"THAANA",
+"THAI",
+"TIBETAN",
+"TIFINAGH",
+"TIRHUTA",
+"TURKISH",
+"UGARITIC",
+"UKRAINIAN",
+"UNIFIED", #UNIFIED CANADIAN ABORIGINAL 
+"VAI",
+"VARANG", #VARANG KSHITI
+"YI"}
