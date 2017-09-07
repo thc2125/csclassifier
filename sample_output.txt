@@ -10,15 +10,15 @@ Model:
     Total Time:
     
     Hyper-parameters:
-        CNN T1 Filter Dimension: [#]
-        CNN T2 Filter Dimension: [#]
-        lstm dimension:          [#]
-        dropout rate:            [#]
-        kernel size:             [#]
-        Loss Algorithm:          [#]
-        Loss Optimizer:          [#]
-        Learning Rate:           [#]
-        Decay Rate:              [#]
+        CNN T1 Filter Dimensions: [#]
+        CNN T1 Kernel Size:       [#]
+        CNN T2 Filter Dimensions: [#]
+        LSTM Dimensions:          [#]
+        Dropout Rate:             [#]
+        Loss Algorithm:           [#]
+        Loss Optimizer:           [#]
+        Learning Rate:            [#]
+        Decay Rate:               [#]
 
 Training on: [list of language pairs]
 Testing on: [list of language pairs]
