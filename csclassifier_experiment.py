@@ -16,6 +16,7 @@ import random
 import pickle
 import os
 import re
+import time
 
 from math import ceil
 from pathlib import Path
@@ -35,7 +36,9 @@ from csclassifier import CSClassifier
 
 def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=None, 
     corpus_filename_prefix = 'normalized-twitter_cs_', use_alphabets=False, 
-    epochs=50, batch_size=25):
+    epochs=50, batch_size=25, patience=2):
+
+    start_time = time.clock()
 
     corpus_patt = re.compile(corpus_filename_prefix + '.')
     # Ingest the corpora
@@ -74,7 +77,7 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
 
     char2idx, idx2char = train_corpus.create_dictionary()
     csc = CSClassifier(maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
-        idx2char, epochs, batch_size)
+        idx2char, epochs, batch_size, patience)
 
     print()
     print("Beginning Training. Excluding " + test_langs)
@@ -82,16 +85,26 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
        
     csc.generate_model(train_corpus, test_langs, output_dirname=output_dirname)
     metrics = csc.evaluate_model(test_corpus)
+
+    end_time = time.clock()
+    
+    output = [batch_size, epochs, csc, start_time, end_time]
+    produce_output(*output)
     del test_corpus
     del train_corpus
 
-
 def produce_output(
-        batch_size):
+        batch_size, epochs_expected, csc, start_time, end_time):
     experiment_output = "CSCLASSIFIER MODEL RESULTS:\n\n"
     experiment_output += "Model: \n"
-    experiment_output += "\tBatch-Size: " + str(batch_size)
-
+    experiment_output += "\tBatch-Size: " + str(batch_size) + "\n"
+    experiment_output += "Epochs Run: " + str(csc.trained_epochs) + "\n" 
+    experiment_output += "Epochs Expected: " + str(epochs_expected) + "\n"
+    experiment_output += "Patience: " + str(csc.patience) + "\n" 
+    experiment_output += "Start Time: " + str(start_time) + "\n"
+    experiment_output += "End Time: " + str(end_time) + "\n"
+    experiment_output += "Total Time: " + str(end_time-start_time) + "\n"
+    experiment_output += "\n"
 
 
 if __name__ == '__main__':
@@ -110,6 +123,9 @@ if __name__ == '__main__':
             help='Corpus filename prefix')
     parser.add_argument('-e', '--epochs', metavar='E', type=int,
             help='Number of epochs to train')
+    parser.add_argument('-t', '--patience', metavar='T', type=int,
+            help='Number of epochs to wait for improvement')
+
 
 
     args = parser.parse_args()
@@ -125,6 +141,7 @@ if __name__ == '__main__':
         main_args['corpus_filename_prefix'] = args.prefix
     if args.epochs:
         main_args['epochs'] = args.epochs
-
+    if args.patience:
+        main_args['patience'] = args.patience
        
     main(**main_args)
