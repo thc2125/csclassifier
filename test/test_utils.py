@@ -25,8 +25,8 @@ class CorpusTestCase(unittest.TestCase):
         self.test_idx2label = {i:l for l, i in self.test_label2idx.items()}
         self.corpus1 = Corpus(label_dictionary=(self.test_label2idx, self.test_idx2label))
         self.corpus2 = Corpus(label_dictionary=(self.test_label2idx, self.test_idx2label))
-        self.corpus1_filepath = 'test/data/corpus1_file.csv'
-        self.corpus2_filepath = 'test/data/corpus2_file.csv'
+        self.corpus1_filepath = 'test/data/corpus_de+ar.csv'
+        self.corpus2_filepath = 'test/data/corpus_fr+ar.csv'
         self.corpus1_num_words = self.get_num_words(self.corpus1_filepath, 0)
                 
         self.corpus1.read_corpus(self.corpus1_filepath, dl=dl)
