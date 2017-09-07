@@ -1,0 +1,71 @@
+CSCLASSIFIER MODEL RESULTS:
+
+Model: 
+    Batch-Size:
+    Epochs Run:
+    Epochs Expected:
+    Patience: 
+    Start Time:
+    End Time:
+    Total Time:
+    
+    Hyper-parameters:
+        CNN T1 Filter Dimension: [#]
+        CNN T2 Filter Dimension: [#]
+        lstm dimension:          [#]
+        dropout rate:            [#]
+        kernel size:             [#]
+        Loss Algorithm:          [#]
+        Loss Optimizer:          [#]
+        Learning Rate:           [#]
+        Decay Rate:              [#]
+
+Training on: [list of language pairs]
+Testing on: [list of language pairs]
+
+Unknown character vectors associated w/ alphabets: [true or false]
+
+Results:                         
+
+                 Word-level    Sentence-Level
+Accuracy:        [#]           [#]
+Precision:       [#]           [#]
+Recall:          [#]           [#]
+F-Score:         [#]           [#]
+
+Corpus Composition:
+
+                        Train/Dev   Test
+Monolingual sentences:  [#] [%]%    [#] [%]%
+Multilingual sentences: [#] [%]%    [#] [%]%
+
+                                              Train/Dev    Test
+Avg. # of switches per sentence:              [#]          [#]
+Avg. # of switches per multilingual sentence: [#]          [#]
+
+
+Code Switch Types:               Train/Dev    Test
+    LANG1 to LANG2               [#]  [%]%    [#]  [%]%
+    LANG2 to LANG1               [#]  [%]%    [#]  [%]%
+    LANG1 PUNCT* to LANG2        [#]  [%]%    [#]  [%]%
+    LANG2 PUNCT* to LANG1        [#]  [%]%    [#]  [%]%
+    LANG1 OTHER* to LANG2        [#]  [%]%    [#]  [%]%
+    LANG2 OTHER* to LANG1        [#]  [%]%    [#]  [%]%
+    LANG1 PUNCT* OTHER* to LANG2 [#]  [%]%    [#]  [%]%
+    LANG2 PUNCT* OTHER* to LANG1 [#]  [%]%    [#]  [%]%
+    LANG1 OTHER* PUNCT* to LANG2 [#]  [%]%    [#]  [%]%
+    LANG2 OTHER* PUNCT* to LANG1 [#]  [%]%    [#]  [%]%
+
+  
+    Token Types:  
+        LANG1        [#] [%]%     [#] [%]%
+        LANG2        [#] [%]%     [#] [%]%
+        OTHER        [#] [%]%     [#] [%]%
+        PUNCT        [#] [%]%     [#] [%]%
+
+    Language:
+        ar           [#] [%]%     [#] [%]%
+        de           [#] [%]%     [#] [%]%
+        ...
+
+
