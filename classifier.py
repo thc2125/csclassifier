@@ -29,7 +29,7 @@ class Classifier:
         self.optimizer_name = optimizer
         self.learning_rate = learning_rate
         self.decay = decay
-        if self.optimizer_name = 'adam':
+        if self.optimizer_name == 'adam':
             self.optimizer = optimizers.Adam(lr=learning_rate, decay=decay)
         else:
             raise ValueError("Invalid optimizer passed to Classifier")
