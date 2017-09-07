@@ -17,6 +17,7 @@ import pickle
 import os
 
 from math import ceil
+from pathlib import Path, PurePath
 
 import numpy as np
 from keras.models import load_model
@@ -40,7 +41,7 @@ class CSClassifier():
         self.batch_size = batch_size
         self.patience = patience
 
-    def generate_model(self, train_corpus, test_langs, model=None, output_dirname='.'):
+    def generate_model(self, train_corpus, test_langs, model=None, output_dirpath=PurePath('.')):
         #train_split = [ceil(9 * len(corpus.sentences)/10)]
         #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
         if train_corpus.maxsentlen > self.maxsentlen or train_corpus.maxwordlen > self.maxwordlen:
@@ -61,8 +62,14 @@ class CSClassifier():
         else:
             # Train the model
             alph = 'alph' if train_corpus.use_alphabets else ''
+            # Create a folder to store checkpoints if one does not exist
+            checkpoints_dirpath = Path(output_dirpath, 'checkpoints')
+            if not checkpoints_dirpath.exists():
+                checkpoints_dirpath.mkdir()
             checkpoint = ModelCheckpoint(
-                filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'_'+alph+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
+                filepath=str(checkpoints_dirpath/('checkpoint_'+test_langs+'_'
+                    +alph+'.{epoch:02d}--'+'{val_loss:.2f}.hdf5')),
+                    monitor='val_loss', mode='min')
             stop_early = EarlyStopping(
                 monitor='val_categorical_accuracy',
                 patience=self.patience)
@@ -71,7 +78,8 @@ class CSClassifier():
                 sample_weight=train_labels_weights, 
                 callbacks=[checkpoint, stop_early])
             # Save the model
-            self.classifier.model.save(output_dirname + '/cs_classifier_model_' + test_langs + '_' + alph + '.h5')
+            self.classifier.model.save(str(output_dirpath / 
+                ('cs_classifier_model_' + test_langs + '_' + alph + '.h5')))
             self.trained_epochs = len(self.history.epoch)
         return self.classifier
 
