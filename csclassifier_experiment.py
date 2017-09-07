@@ -75,6 +75,9 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
     char2idx, idx2char = train_corpus.create_dictionary()
     csc = CSClassifier(maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
         idx2char, epochs, batch_size)
+    print()
+    print("Beginning Training. Excluding " + test_langs)
+    print()
        
     csc.generate_model(train_corpus, test_langs, output_dirname=output_dirname)
     metrics = csc.evaluate_model(test_corpus)
