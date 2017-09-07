@@ -1,7 +1,7 @@
 from math import log, ceil
 
 import keras.backend as K
-
+from keras import optimizers
 from keras.layers import Input, Embedding, Conv1D, Dropout, GlobalMaxPooling1D
 from keras.layers import Dense, Merge, TimeDistributed, Bidirectional, LSTM
 from keras.layers import add, concatenate
@@ -10,18 +10,29 @@ from keras.models import Model
 
 
 class Classifier:
-    def __init__(self, char2idx, maxsentlen, maxwordlen, num_labels):
+    def __init__(self, char2idx, maxsentlen, maxwordlen, num_labels, n_1=59,
+            n_2=108, lstm_dim=23, dropout_rate=.25, kernel_size=3, 
+            loss='categorical_crossentropy', 
+            optimizer='adam', learning_rate=.001, decay=0):
 
         self.C = char2idx.values()
 
         self.Cdim = ceil(log(len(self.C), 2))
 
         # Hyperparameters tuned by Jaech et. al. 
-        self.n_1 = 59
-        self.n_2 = 108
-        self.lstm_dim = 23
-        self.dropout_rate = .25
-        self.kernel_size = 3
+        self.n_1 = n_1
+        self.n_2 = n_2
+        self.lstm_dim = lstm_dim
+        self.dropout_rate = dropout_rate
+        self.kernel_size = kernel_size
+        self.loss = loss
+        self.optimizer_name = optimizer
+        self.learning_rate = learning_rate
+        self.decay = decay
+        if self.optimizer_name = 'adam':
+            self.optimizer = optimizers.Adam(lr=learning_rate, decay=decay)
+        else:
+            raise ValueError("Invalid optimizer passed to Classifier")
 
         # First let's set up Char2Vec
         # TODO: Here's an idea on masking: make another input vector for each 
@@ -94,7 +105,8 @@ class Classifier:
         self.p = Dense(num_labels, activation='softmax')(self.v)
         self.model = Model(inputs=self.inputs, outputs=self.p)
         # Note that 'adam' has a default learning rate of .001
-        self.model.compile(loss='categorical_crossentropy', optimizer='adam', 
+        self.model.compile(loss=self.loss, 
+            optimizer=self.optimizer, 
             metrics=['categorical_accuracy'], sample_weight_mode='temporal')
         #plot_model(self.model, show_shapes=True)
 
