@@ -47,19 +47,7 @@ class CSClassifier():
 
         train_sentences, train_labels, train_labels_weights = train_corpus.np_idx_conversion(self.maxsentlen,
             self.maxwordlen)
-        '''
-        print()
-        #print(sorted(train_corpus.char_frequency.items(), key=lambda x:x[1]))
-        print()
-        print(train_corpus.sentences[20])
-        print(train_corpus.idx2char)
-        #print(sorted(train_corpus.char2idx.items(),key=lambda x: x[1]))
-        print(train_sentences[20])
-        #print(sorted(train_corpus.char_frequency.items()))
-        utils.print_np_sentence(train_sentences[20], self.idx2char) 
-        utils.print_np_label(train_labels[20], self.idx2label)
-        print(train_labels_weights[20])
-        '''
+
 
         num_labels = len(self.label2idx)
 
@@ -73,16 +61,16 @@ class CSClassifier():
             # Train the model
             alph = 'alph' if train_corpus.use_alphabets else ''
             checkpoint = ModelCheckpoint(
-                filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'_'+alph.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
+                filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'_'+alph+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
             stop_early = EarlyStopping(
                 monitor='val_categorical_accuracy',
-                patience=5)
+                patience=2)
             self.classifier.model.fit(x=train_sentences, y=train_labels,
                 epochs=self.epochs, batch_size=self.batch_size, validation_split=.1,
                 sample_weight=train_labels_weights, 
                 callbacks=[checkpoint, stop_early])
             # Save the model
-            self.classifier.model.save(output_dirname + '/cs_classifier_model_' + test_langs + '.h5')
+            self.classifier.model.save(output_dirname + '/cs_classifier_model_' + test_langs + '_' + alph + '.h5')
         return self.classifier
 
     def evaluate_model(self, test_corpus):
