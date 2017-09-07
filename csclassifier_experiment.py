@@ -36,8 +36,8 @@ from csclassifier import CSClassifier
 def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=None, 
     corpus_filename_prefix = 'normalized-twitter_cs_', use_alphabets=False, 
     epochs=50, batch_size=25):
-    corpus_patt = re.compile(corpus_filename_prefix + '.')
 
+    corpus_patt = re.compile(corpus_filename_prefix + '.')
     # Ingest the corpora
     c_f_fp = Path(corpus_folder_filename)
     corpora = {}
@@ -75,6 +75,7 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
     char2idx, idx2char = train_corpus.create_dictionary()
     csc = CSClassifier(maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
         idx2char, epochs, batch_size)
+
     print()
     print("Beginning Training. Excluding " + test_langs)
     print()
@@ -84,20 +85,13 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
     del test_corpus
     del train_corpus
 
-    exp_results_path = Path(output_dirname, 'csclassifier_test_results.txt')
-    if not exp_results_path.exists():
-        mode = 'w'
-    else:
-        mode = 'a'
 
-    with exp_results_path.open(mode=mode) as results_file:
-        if mode == 'w':
-            results_file.write("CSCLASSIFIER MODEL RESULTS:\n")
-        results_file.write("Training on " + str([train_langs for train_langs 
-                    in corpora.keys() if train_langs != test_langs]) + '\n')
-        results_file.write("Testing on " + test_langs + '\n')
-        for metric in metrics.keys():
-            results_file.write(metric + ": " + str(metrics[metric]) + '\n')
+def produce_output(
+        batch_size):
+    experiment_output = "CSCLASSIFIER MODEL RESULTS:\n\n"
+    experiment_output += "Model: \n"
+    experiment_output += "\tBatch-Size: " + str(batch_size)
+
 
 
 if __name__ == '__main__':
