@@ -29,7 +29,7 @@ from classifier import Classifier
 
 class CSClassifier():
     def __init__(self, maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
-        idx2char, epochs, batch_size):
+        idx2char, epochs, batch_size, patience):
         self.maxsentlen = maxsentlen
         self.maxwordlen = maxwordlen
         self.label2idx = label2idx
@@ -38,6 +38,7 @@ class CSClassifier():
         self.idx2char = idx2char
         self.epochs = epochs
         self.batch_size = batch_size
+        self.patience = patience
 
     def generate_model(self, train_corpus, test_langs, model=None, output_dirname='.'):
         #train_split = [ceil(9 * len(corpus.sentences)/10)]
@@ -64,13 +65,14 @@ class CSClassifier():
                 filepath=output_dirname+'/checkpoints/checkpoint_'+test_langs+'_'+alph+'.{epoch:02d}--{val_loss:.2f}.hdf5', monitor='val_loss', mode='min')
             stop_early = EarlyStopping(
                 monitor='val_categorical_accuracy',
-                patience=2)
-            self.classifier.model.fit(x=train_sentences, y=train_labels,
+                patience=self.patience)
+            self.history = self.classifier.model.fit(x=train_sentences, y=train_labels,
                 epochs=self.epochs, batch_size=self.batch_size, validation_split=.1,
                 sample_weight=train_labels_weights, 
                 callbacks=[checkpoint, stop_early])
             # Save the model
             self.classifier.model.save(output_dirname + '/cs_classifier_model_' + test_langs + '_' + alph + '.h5')
+            self.trained_epochs = len(self.history.epoch)
         return self.classifier
 
     def evaluate_model(self, test_corpus):
