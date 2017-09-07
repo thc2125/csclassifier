@@ -88,13 +88,16 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
 
     end_time = time.clock()
     
-    output = [batch_size, epochs, csc, start_time, end_time]
+    output = ([batch_size, epochs, csc, start_time, end_time
+              ])
     produce_output(*output)
     del test_corpus
     del train_corpus
 
 def produce_output(
         batch_size, epochs_expected, csc, start_time, end_time):
+
+    # Let's start with experiment parameters
     experiment_output = "CSCLASSIFIER MODEL RESULTS:\n\n"
     experiment_output += "Model: \n"
     experiment_output += "\tBatch-Size: " + str(batch_size) + "\n"
@@ -106,6 +109,12 @@ def produce_output(
     experiment_output += "Total Time: " + str(end_time-start_time) + "\n"
     experiment_output += "\n"
 
+    # Now let's add hyperparameters
+    experiment_output += "\tHyper-parameters:\n"
+    experiment_output += "\t\t{:<25}\n".format(str(csc.classifier.n_1))  
+    experiment_output += "\t\t{:<25}\n".format(str(csc.classifier.n_2))  
+
+    print(experiment_output)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A neural network based'
