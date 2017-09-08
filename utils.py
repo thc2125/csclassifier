@@ -60,7 +60,6 @@ class Corpus():
         self.char_frequency = defaultdict(int)
 
 
-    # TODO: Need to fix this so that tests don't fail
     def __add__(self, other):
         corp = Corpus()
         return self._combine(corp, other)
@@ -116,7 +115,7 @@ class Corpus():
         """
 
         word = row[1]
-        # TODO: This puts a max word length on a word
+        # NOTE: This puts a max word length on a word
         # Length arbitrary based on
         # len("supercalifragilisticexpialidocious")
         if len(word) > 34:
@@ -347,7 +346,6 @@ class Corpus_CS_Langs(Corpus):
         new_corpus2 = Corpus_CS_Langs(use_alphabets=self.use_alphabets)
         return Corpus.randomly_split_corpus(self, split=split, 
             new_corpus1=new_corpus1, new_corpus2=new_corpus2)
-
 
 def print_np_sentences(np_sentences, idx2char):
     """Prints all sentences in the corpus."""
