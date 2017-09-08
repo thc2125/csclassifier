@@ -27,17 +27,26 @@ Unknown character vectors associated w/ alphabets: [true or false]
 
 Results:                         
 
-                 Word-level    Sentence-Level
+                 Word-level    Sentence-level
 Accuracy:        [#]           [#]
-Precision:       [#]           [#]
+Precision:      
+    PADDING      [#]           [#] 
+    NON-CS       [#]           [#]
+    CS           [#]           [#]
 Recall:          [#]           [#]
+    PADDING      [#]           [#] 
+    NON-CS       [#]           [#]
+    CS           [#]           [#]
 F-Score:         [#]           [#]
+    PADDING      [#]           [#] 
+    NON-CS       [#]           [#]
+    CS           [#]           [#]
 
 Corpus Composition:
 
-                        Train/Dev   Test
-Monolingual sentences:  [#] [%]%    [#] [%]%
-Multilingual sentences: [#] [%]%    [#] [%]%
+                        Train/Dev         Test
+Monolingual sentences:  [###,###] [%]%    [###,###] [%%]%
+Multilingual sentences: [###,###] [%]%    [###,###] [%%]%
 
                                               Train/Dev    Test
 Avg. # of switches per sentence:              [#]          [#]
