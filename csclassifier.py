@@ -30,7 +30,7 @@ from classifier import Classifier
 
 class CSClassifier():
     def __init__(self, maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
-        idx2char, epochs, batch_size, patience):
+        idx2char, epochs, batch_size, patience, train_langs, test_langs):
         self.maxsentlen = maxsentlen
         self.maxwordlen = maxwordlen
         self.label2idx = label2idx
@@ -40,12 +40,17 @@ class CSClassifier():
         self.epochs = epochs
         self.batch_size = batch_size
         self.patience = patience
+ 
+        self.train_langs = train_langs
+        self.test_langs = test_langs
 
-    def generate_model(self, train_corpus, test_langs, model=None, output_dirpath=PurePath('.')):
+    def generate_model(self, train_corpus, model=None, output_dirpath=PurePath('.')):
         #train_split = [ceil(9 * len(corpus.sentences)/10)]
         #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
         if train_corpus.maxsentlen > self.maxsentlen or train_corpus.maxwordlen > self.maxwordlen:
             raise Exception("'train_corpus' has greater maxsentlen or maxwordlen")
+
+        self.test_langs_names = 'ALL' if len(self.test_langs) > 1 else self.test_langs[0]
 
         train_sentences, train_labels, train_labels_weights = train_corpus.np_idx_conversion(self.maxsentlen,
             self.maxwordlen)
@@ -67,7 +72,7 @@ class CSClassifier():
             if not checkpoints_dirpath.exists():
                 checkpoints_dirpath.mkdir()
             checkpoint = ModelCheckpoint(
-                filepath=str(checkpoints_dirpath/('checkpoint_'+test_langs+'_'
+                filepath=str(checkpoints_dirpath/('checkpoint_'+self.test_langs_names+'_'
                     +alph+'.{epoch:02d}--'+'{val_loss:.2f}.hdf5')),
                     monitor='val_loss', mode='min')
             stop_early = EarlyStopping(
@@ -79,7 +84,7 @@ class CSClassifier():
                 callbacks=[checkpoint, stop_early])
             # Save the model
             self.classifier.model.save(str(output_dirpath / 
-                ('cs_classifier_model_' + test_langs + '_' + alph + '.h5')))
+                ('cs_classifier_model_' + self.test_langs_names + '_' + alph + '.h5')))
             self.trained_epochs = len(self.history.epoch)
         return self.classifier
 
@@ -100,10 +105,17 @@ class CSClassifier():
         test_cat_labels = np.argmax(test_labels, axis=2)
         pred_cat_labels = np.argmax(pred_labels, axis=2)
 
-        metrics = (utils.compute_accuracy_metrics(
+        metrics = {}
+
+        metrics['word'] = (utils.compute_accuracy_metrics(
             test_cat_labels, pred_cat_labels, self.label2idx))
-        for metric in metrics:
-            if metric == 'confusion_matrix':
-                continue
-            print(metric + ": " + str(metrics[metric]))
+
+        # Reduce gold labels and predicted labels to sentence level
+        # cs identification
+        test_cat_labels_sent = np.maximum.reduce(test_cat_labels,axis=1, keepdims=True)
+        pred_cat_labels_sent = np.maximum.reduce(pred_cat_labels,axis=1, keepdims=True)
+
+        metrics['sentence'] = (utils.compute_accuracy_metrics(
+            test_cat_labels_sent, pred_cat_labels_sent, self.label2idx))
+
         return metrics
