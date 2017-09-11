@@ -48,9 +48,9 @@ class Corpus():
         self.use_alphabets = use_alphabets
         if use_alphabets:
             self.ad = AlphabetDetector()
-        self.__init_data()
+        self._init_data()
 
-    def __init_data(self):
+    def _init_data(self):
         self.sentences=[]
         self.labels=[]
         self.maxwordlen = 0
@@ -60,7 +60,9 @@ class Corpus():
         self.char_frequency = defaultdict(int)
 
 
+
     def __add__(self, other):
+        #TODO: add an exception if the two corpora have any common sentences
         corp = Corpus()
         return self._combine(corp, other)
         
@@ -122,13 +124,14 @@ class Corpus():
            return
         self.maxwordlen = max(self.maxwordlen, len(word))
            
-        label = self.label_word(row[2])
 
         # Remove the word id at the end of the sentence name
         sname = ''.join(row[0].split(sep='_')[:-1])
 
         if sname not in self.sentence2sidx:
            self.add_sentence(sname)
+
+        label = self.label_word(row[2])
 
         nsidx = self.sentence2sidx[sname]
         self.sentences[nsidx].append(word)
@@ -317,9 +320,28 @@ class Corpus_CS_Langs(Corpus):
                 label_dictionary=(label2idx,idx2label), train=train, 
                  use_alphabets=use_alphabets)
 
+    def _init_data(self):
+        self.switch_count = 0
+        self.multilingual_sentence_count = 0
+        Corpus._init_data(self)
+
     def __add__(self, other):
         corp = Corpus_CS_Langs()
+        return self._combine(corp, other)
+
+    def _combine(self, corp, other):
+        # NOTE: The proper functioning of this depends on both corpora being 
+        # composed of completely different sentences.
+        corp.switch_count += other.switch_count 
+        corp.multilingual_sentence_count += other.multilingual_sentence_count
         return Corpus._combine(self, corp, other)
+
+    def add_sentence(self, sname):
+       # Lang_stream needs to be reset for every new sentence
+       self.lang_stream = None
+       # Another flag variable to indicate if 
+       self.first_cs = False
+       Corpus.add_sentence(self, sname)
 
     def label_word(self, label):
        if self.lang_stream == None:
@@ -327,6 +349,10 @@ class Corpus_CS_Langs(Corpus):
            return 'no_cs'
        elif (label != 'other' and label != 'punct' and label != self.lang_stream):
            self.lang_stream = label
+           self.switch_count += 1 
+           if not self.first_cs:
+               self.first_cs = True
+               self.multilingual_sentence_count += 1
            return 'cs'
        else:
            return 'no_cs'
@@ -334,12 +360,6 @@ class Corpus_CS_Langs(Corpus):
     def read_corpus(self, corpus_filepath, dl):
         self.lang_stream = None
         Corpus.read_corpus(self, corpus_filepath, dl)
-
-    def add_sentence(self, sname):
-        Corpus.add_sentence(self, sname)
-        # Note that the corpus must have words in sentences ordered and
-        # row adjacent
-        self.lang_stream = None
 
     def randomly_split_corpus(self, split=.9):
         new_corpus1 = Corpus_CS_Langs(train=True, use_alphabets=self.use_alphabets)
