@@ -53,6 +53,7 @@ class Corpus():
     def _init_data(self):
         self.sentences=[]
         self.labels=[]
+        self.label_counts = defaultdict(int)
         self.maxwordlen = 0
         self.maxsentlen = 0
         self.sentence2sidx = {}
@@ -70,7 +71,14 @@ class Corpus():
     def _combine(self, corp, other):
         corp.sidx = len(self.sentences)
         corp.sentences = self.sentences + other.sentences
+
         corp.labels = self.labels + other.labels
+
+        for k, v in self.label_counts.items():
+            corp.label_counts[k] += v
+        for k, v in other.label_counts.items():
+            corp.label_counts[k] += v
+
         corp.sentence2sidx = self.sentence2sidx.copy() 
         corp.sentence2sidx.update({s : (i + self.sidx) for s, i in 
                 other.sentence2sidx.items()})
@@ -95,7 +103,7 @@ class Corpus():
         self.corpus_filepath = corpus_filepath
         print(corpus_filepath)
         with open(corpus_filepath) as corpus_file:
-            corpus_reader = csv.reader(corpus_file, delimiter=dl)
+            corpus_reader = csv.reader(corpus_file, delimiter=dl, doublequote=False)
 
             # Skip the header
             next(corpus_reader)
@@ -147,6 +155,7 @@ class Corpus():
            self.labels.append([])
 
     def label_word(self, label):
+        self.label_counts[label] += 1
         return label
 
     def np_idx_conversion(self, maxsentlen, maxwordlen):
@@ -322,6 +331,7 @@ class Corpus_CS_Langs(Corpus):
 
     def _init_data(self):
         self.switch_count = 0
+        self.switch_label_counts = defaultdict(int)
         self.multilingual_sentence_count = 0
         Corpus._init_data(self)
 
@@ -334,26 +344,38 @@ class Corpus_CS_Langs(Corpus):
         # composed of completely different sentences.
         corp.switch_count += other.switch_count 
         corp.multilingual_sentence_count += other.multilingual_sentence_count
+
+        for k, v in self.switch_label_counts.items():
+            corp.switch_label_counts[k] += v
+        for k, v in other.label_counts.items():
+            corp.switch_label_counts[k] += v
+
+
         return Corpus._combine(self, corp, other)
 
     def add_sentence(self, sname):
        # Lang_stream needs to be reset for every new sentence
        self.lang_stream = None
-       # Another flag variable to indicate if 
+       # Another flag variable to indicate if we've seen a code-switch yet in 
+       # this sentence
        self.first_cs = False
        Corpus.add_sentence(self, sname)
 
     def label_word(self, label):
-       if self.lang_stream == None:
+       Corpus.label_word(self, label)
+       if self.lang_stream == None and label != 'other' and label != 'punct':
            self.lang_stream = label
            return 'no_cs'
+
        elif (label != 'other' and label != 'punct' and label != self.lang_stream):
+           self.switch_label_counts[self.lang_stream + " to " + label] += 1
            self.lang_stream = label
            self.switch_count += 1 
            if not self.first_cs:
                self.first_cs = True
                self.multilingual_sentence_count += 1
            return 'cs'
+
        else:
            return 'no_cs'
 
