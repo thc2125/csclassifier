@@ -103,7 +103,7 @@ class Corpus():
         self.corpus_filepath = corpus_filepath
         print(corpus_filepath)
         with open(corpus_filepath) as corpus_file:
-            corpus_reader = csv.reader(corpus_file, delimiter=dl, doublequote=False)
+            corpus_reader = csv.reader(corpus_file, delimiter=dl)
 
             # Skip the header
             next(corpus_reader)
