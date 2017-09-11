@@ -50,9 +50,10 @@ class CSClassifier():
         if train_corpus.maxsentlen > self.maxsentlen or train_corpus.maxwordlen > self.maxwordlen:
             raise Exception("'train_corpus' has greater maxsentlen or maxwordlen")
 
+        self.train_corpus = train_corpus
         self.test_langs_names = 'ALL' if len(self.test_langs) > 1 else self.test_langs[0]
 
-        train_sentences, train_labels, train_labels_weights = train_corpus.np_idx_conversion(self.maxsentlen,
+        train_sentences, train_labels, train_labels_weights = self.train_corpus.np_idx_conversion(self.maxsentlen,
             self.maxwordlen)
 
 
@@ -66,7 +67,7 @@ class CSClassifier():
             self.classifier.model = load_model(model)
         else:
             # Train the model
-            alph = 'alph' if train_corpus.use_alphabets else ''
+            alph = 'alph' if self.train_corpus.use_alphabets else ''
             # Create a folder to store checkpoints if one does not exist
             checkpoints_dirpath = Path(output_dirpath, 'checkpoints')
             if not checkpoints_dirpath.exists():
@@ -95,7 +96,8 @@ class CSClassifier():
         #TODO: remove the following two commented out lines
         #maxsentlen = train_corpus.maxsentlen
         #maxwordlen = train_corpus.maxwordlen
-        test_sentences, test_labels, test_labels_weights = test_corpus.np_idx_conversion(self.maxsentlen,
+        self.test_corpus = test_corpus
+        test_sentences, test_labels, test_labels_weights = self.test_corpus.np_idx_conversion(self.maxsentlen,
             self.maxwordlen)
 
         print("Testing on sentences of shape: " + str(test_sentences.shape))
