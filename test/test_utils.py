@@ -64,6 +64,27 @@ class CorpusTestCase(unittest.TestCase):
                 "lang1", "other", "lang1", "other",
                 "lang2"],
             ["lang1", "lang2", "lang1", "lang2"]]
+        self.label1_counts = defaultdict(int, lang1=28, lang2=4, other=24)
+
+
+        self.sentences2 = [
+            ["j'aime", "une", "vidéo"],
+            ["assawra", "–", "الثورة", "après", "avoir", "soutenu", 
+                "l’isolement", "du", 'qatar,', "trump", "appelle", "le", 
+                "golfe", "à", "l’unit", "é"], 
+            ["les", "versets", "de", "patience", "pour", "toute", "personne", 
+                'éprouvée,', "en", "difficulté", "آيات", "الصبر"], 
+            ["salam", "akhi.", "qu’allah", "te", "facilite"]]
+
+        self.labels2 = [
+            ["other", "lang1", "lang1", "other", "lang1", "lang2", "lang1",
+                "lang1", "lang1", "other", "lang1", "other", "other", "lang1",
+                "lang1", "lang1", "lang1", "other", "lang1"],
+            ["lang1", "lang1", "lang1", "lang1", "lang1", "lang1", 
+                "lang1", "other", "lang1", "lang1", "lang2", "lang2"], 
+            ["other", "other", "other", "lang1", "lang1"]] 
+        self.label2_counts = defaultdict(int, other=10, lang1=23, lang2=3)
+        
 
     def tearDown(self):
         pass
@@ -113,12 +134,15 @@ class CorpusTestCase(unittest.TestCase):
 
     def test___init_____init_data__(self):
         test_corpus = Corpus()
+
         self.assertEqual(test_corpus.labels, [])
         self.assertEqual(test_corpus.maxwordlen, 0)
         self.assertEqual(test_corpus.maxsentlen, 0)
         self.assertEqual(test_corpus.sentence2sidx, {})
         self.assertEqual(test_corpus.sidx, 0)
         self.assertEqual(test_corpus.char_frequency, {})
+        self.assertEqual(test_corpus.label_counts, {})
+
 
     def test___add___sentences_len(self):
         c1_sent_len = len(self.corpus1.sentences)
@@ -134,7 +158,7 @@ class CorpusTestCase(unittest.TestCase):
 
     def test___add___sentence_elements(self):
         new_corpus = self.corpus1 + self.corpus2
-        new_sentences = self.corpus1.sentences + self.corpus2.sentences
+        new_sentences = self.sentences1 + self.sentences2
         self.assertEqual(new_corpus.sentences, new_sentences)
 
     def test___add___bookkeeping(self):
@@ -152,6 +176,13 @@ class CorpusTestCase(unittest.TestCase):
 
         self.assertEqual(new_corpus.char_frequency, new_char_frequency)
 
+    def test___add___label_counts(self):
+        new_corpus = self.corpus1 + self.corpus2
+        new_label_counts = defaultdict(int, lang1=51, lang2=7, other=34)
+
+        self.assertEqual(new_corpus.label_counts, new_label_counts)
+
+
     def test_read_corpus_sentences(self):
         self.assertEqual(sorted(self.corpus1.sentences), sorted(self.sentences1))
 
@@ -165,6 +196,11 @@ class CorpusTestCase(unittest.TestCase):
     def test_read_corpus_maxsentlen(self):
         self.assertEqual(self.corpus1.maxsentlen, max(len(sent) for sent in self.sentences1))
 
+    def test_read_corpus_labels1_count(self):
+        self.assertEqual(self.corpus1.label_counts, self.label1_counts)
+
+    def test_read_corpus_labels2_count(self):
+        self.assertEqual(self.corpus2.label_counts, self.label2_counts)
 
     def test_read_row_label(self):
         new_corpus = Corpus()
@@ -297,9 +333,36 @@ class CorpusCSLangsTestCase(unittest.TestCase):
                 "cs"],
             ["no_cs", "cs", "cs", "cs"]]
 
+        self.label1_counts = defaultdict(int, lang1=28, lang2=4, other=24)
+        self.switch_label1_counts = defaultdict(int)
+        self.switch_label1_counts["lang1 to lang2"] = 4 
+        self.switch_label1_counts["lang2 to lang1"] = 1
+
+        self.sentences2 = [
+            ["j'aime", "une", "vidéo"],
+            ["assawra", "–", "الثورة", "après", "avoir", "soutenu", 
+                "l’isolement", "du", 'qatar,', "trump", "appelle", "le", 
+                "golfe", "à", "l’unit", "é"], 
+            ["les", "versets", "de", "patience", "pour", "toute", "personne", 
+                'éprouvée,', "en", "difficulté", "آيات", "الصبر"], 
+            ["salam", "akhi.", "qu’allah", "te", "facilite"]]
+
+        self.labels2 = [
+            ["no_cs", "no_cs", "no_cs", "no_cs", "no_cs", "cs", "cs",
+                "no_cs", "no_cs", "no_cs", "no_cs", "no_cs", "no_cs", "no_cs",
+                "no_cs", "no_cs", "no_cs", "no_cs", "no_cs"],
+            ["no_cs", "no_cs", "no_cs", "no_cs", "no_cs", "no_cs",
+                "no_cs", "no_cs", "no_cs", "no_cs", "cs", "no_cs"], 
+            ["no_cs", "no_cs", "no_cs", "no_cs", "no_cs"]] 
+        self.label2_counts = defaultdict(int, lang1=23, lang2=3, other=10)
+        self.switch_label2_counts = defaultdict(int)
+        self.switch_label2_counts["lang1 to lang2"] = 2 
+        self.switch_label2_counts["lang2 to lang1"] = 1
+
     def tearDown(self):
         pass
 
+    '''
     def get_num_words(self, corpus_filepath, num_words):
         with open(corpus_filepath) as corpus_file:
             corpus_reader = csv.reader(corpus_file, delimiter=dl)
@@ -324,6 +387,7 @@ class CorpusCSLangsTestCase(unittest.TestCase):
                 sentences[sname].append(row[1])
                 labels[sname].append(row[2])
         return sentences.values(), labels.values()
+    '''
 
     def test___init___char_dictionary(self):
         test_corpus = Corpus_CS_Langs(char_dictionary=(self.test_char2idx, self.test_idx2char))
@@ -343,13 +407,18 @@ class CorpusCSLangsTestCase(unittest.TestCase):
 
     def test___init_____init_data__(self):
         test_corpus = Corpus_CS_Langs()
+
+        self.assertEqual(test_corpus.switch_count, 0)
+        self.assertEqual(test_corpus.switch_label_counts, {})
+        self.assertEqual(test_corpus.multilingual_sentence_count, 0)
+
         self.assertEqual(test_corpus.labels, [])
         self.assertEqual(test_corpus.maxwordlen, 0)
         self.assertEqual(test_corpus.maxsentlen, 0)
         self.assertEqual(test_corpus.sentence2sidx, {})
         self.assertEqual(test_corpus.sidx, 0)
         self.assertEqual(test_corpus.char_frequency, {})
-        self.assertEqual(test_corpus.switch_count, 0)
+        self.assertEqual(test_corpus.label_counts, {})
 
     def test___add___sentences_len(self):
         c1_sent_len = len(self.corpus1.sentences)
@@ -365,7 +434,7 @@ class CorpusCSLangsTestCase(unittest.TestCase):
 
     def test___add___sentence_elements(self):
         new_corpus = self.corpus1 + self.corpus2
-        new_sentences = self.corpus1.sentences + self.corpus2.sentences
+        new_sentences = self.sentences1 + self.sentences2
         self.assertEqual(new_corpus.sentences, new_sentences)
 
     def test___add___bookkeeping(self):
@@ -383,6 +452,13 @@ class CorpusCSLangsTestCase(unittest.TestCase):
 
         self.assertEqual(new_corpus.char_frequency, new_char_frequency)
 
+    def test___add___label_counts(self):
+        new_corpus = self.corpus1 + self.corpus2
+        new_label_counts = defaultdict(int, lang1=51, lang2=7, other=34)
+
+        self.assertEqual(new_corpus.label_counts, new_label_counts)
+
+
     def test_read_corpus_sentences(self):
         self.assertEqual(sorted(self.corpus1.sentences), sorted(self.sentences1))
 
@@ -396,8 +472,20 @@ class CorpusCSLangsTestCase(unittest.TestCase):
     def test_read_corpus_maxsentlen(self):
         self.assertEqual(self.corpus1.maxsentlen, max(len(sent) for sent in self.sentences1))
 
+    def test_read_corpus_labels1_count(self):
+        self.assertEqual(self.corpus1.label_counts, self.label1_counts)
+
+    def test_read_corpus_labels2_count(self):
+        self.assertEqual(self.corpus2.label_counts, self.label2_counts)
+
     def test_read_corpus_switch_count(self):
         self.assertEqual(self.corpus1.switch_count, 5)
+
+    def test_read_corpus_switch_label1_count(self):
+        self.assertEqual(self.corpus1.switch_label_counts, self.switch_label1_counts)
+
+    def test_read_corpus_switch_label2_count(self):
+        self.assertEqual(self.corpus2.switch_label_counts, self.switch_label2_counts)
 
     def test_read_corpus_multilingual_sentence_count(self):
         self.assertEqual(self.corpus1.multilingual_sentence_count, 3)
