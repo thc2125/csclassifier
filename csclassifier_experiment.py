@@ -17,6 +17,7 @@ import pickle
 import os
 import re
 import time
+import datetime
 
 from math import ceil
 from pathlib import Path, PurePath
@@ -38,22 +39,23 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
     corpus_filename_prefix = 'normalized-twitter_cs_', use_alphabets=False, 
     epochs=50, batch_size=25, patience=2):
 
-    start_time = time.clock()
-
+    start_time = time.process_time()
+    start_date = datetime.date.today()
     corpus_patt = re.compile(corpus_filename_prefix + '.')
-    # Ingest the corpora
-    c_f_fp = Path(corpus_folder_filename)
-    corpora = {}
-    for f in c_f_fp.iterdir():
-        if corpus_patt.match(f.name):
-            corpus = Corpus_CS_Langs(use_alphabets=use_alphabets)
-            corpus.read_corpus(str(f), dl=',')
-            langs = f.name.replace(corpus_filename_prefix,'')
-            corpora[langs] = corpus
 
     # Create the test and training corpora
     # If we're testing on a single language pair
     if excluded_corpus_filename:
+        # First ingest all the corpora
+        c_f_fp = Path(corpus_folder_filename)
+        corpora = {}
+        for f in c_f_fp.iterdir():
+            if corpus_patt.match(f.name):
+                corpus = Corpus_CS_Langs(use_alphabets=use_alphabets)
+                corpus.read_corpus(str(f), dl=',')
+                langs = f.name.replace(corpus_filename_prefix,'')
+                corpora[langs] = corpus
+
         test_langs = [Path(excluded_corpus_filename).name.replace(corpus_filename_prefix,'')]
         train_langs = []
         test_corpus = corpora[test_langs[0]]
@@ -65,12 +67,20 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
 
     # Otherwise if we're testing on a randomized split of the data
     else:
+
         all_langs = []
-        temp_corpus = Corpus_CS_Langs()
-        for langs in corpora.keys():
-            temp_corpus = temp_corpus + corpora[langs]
-            all_langs += [langs]
-        train_corpus, test_corpus = temp_corpus.randomly_split_corpus()
+        train_corpus = Corpus_CS_Langs(use_alphabets=use_alphabets, train=True)
+        test_corpus = Corpus_CS_Langs(use_alphabets=use_alphabets)
+        for f in c_f_fp.iterdir():
+            if corpus_patt.match(f.name):
+                utils.randomly_read_CS_Langs_Corpus(str(f), train_corpus, 
+                    test_corpus, dl=',')
+                langs = f.name.replace(corpus_filename_prefix,'')
+                all_langs += [langs]
+
+        train_corpus.read_corpus_bookkeeping()
+        test_corpus.read_corpus_bookkeeping()
+
         train_langs, test_langs = all_langs, all_langs
 
     maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
@@ -93,29 +103,39 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
     print()
 
     
-
-    end_time = time.clock()
+    end_date = datetime.date.today()
+    end_time = time.process_time()
     
-    output = ([batch_size, epochs, csc, start_time, end_time, use_alphabets,
+    output = ([batch_size, epochs, csc, start_date, end_date, start_time, end_time, use_alphabets,
               metrics])
     return produce_output(*output)
     #del test_corpus
     #del train_corpus
 
 def produce_output(
-        batch_size, epochs_expected, csc, start_time, end_time, use_alphabets, 
-            metrics):
+        batch_size, epochs_expected, csc, start_date, end_date, start_time, 
+            end_time, use_alphabets, metrics):
 
     # Let's start with experiment parameters
     experiment_output = "CSCLASSIFIER MODEL RESULTS:\n\n"
     experiment_output += "MODEL INFORMATION: \n"
-    experiment_output += "\tBatch-Size: " + str(batch_size) + "\n"
-    experiment_output += "\tEpochs Run: " + str(csc.trained_epochs) + "\n" 
-    experiment_output += "\tEpochs Expected: " + str(epochs_expected) + "\n"
-    experiment_output += "\tPatience: " + str(csc.patience) + "\n" 
-    experiment_output += "\tStart Time: " + str(start_time) + "\n"
-    experiment_output += "\tEnd Time: " + str(end_time) + "\n"
-    experiment_output += "\tTotal Time: " + str(end_time-start_time) + "\n"
+    experiment_output += "{:<4}{:<22}{}\n".format("", "Batch-Size:", str(batch_size))
+    experiment_output += "{:<4}{:<22}{}\n".format("","Epochs Run:", 
+        str(csc.trained_epochs))
+    experiment_output += "{:<4}{:<22}{}\n".format("","Epochs Expected:", 
+        str(epochs_expected))
+    experiment_output += "{:<4}{:<22}{}\n".format("","Patience:",
+        str(csc.patience))
+    experiment_output += "{:<4}{:<22}{}\n".format("","Start Date:",
+        str(start_date))
+    experiment_output += "{:<4}{:<22}{}\n".format("","End Date:",
+        str(end_date))
+    experiment_output += "{:<4}{:<22}{}\n".format("","Start Time:",
+        str(start_time))
+    experiment_output += "{:<4}{:<22}{}\n".format("","End Time:",
+        str(end_time))
+    experiment_output += "{:<4}{:<22}{}\n".format("","Total Processing Time:",
+        str(end_time-start_time))
 
     experiment_output += "\n"
 
@@ -194,10 +214,57 @@ def produce_output(
             metrics['sentence']['fscore'][2])
 
     experiment_output += "\n"
-    experiment_output += "CORPUS COMPOSITION:"
+    experiment_output += "CORPUS COMPOSITION:\n"
+    experiment_output += "\n"
+    experiment_output += "{:<24}{:<18}{}\n".format("", "Train/Dev", "Test")
+    experiment_output += "{:<24}{:<18,}{:<18,}\n".format(
+            "Total Sentences:", 
+            (len(csc.train_corpus.sentences)),
+            (len(csc.test_corpus.sentences)))
+    experiment_output += "{:<24}{:<10,}{:<8.3%}{:<10,}{:.3%}\n".format(
+            "Monolingual Sentences:",
+            (len(csc.train_corpus.sentences)-
+                csc.train_corpus.multilingual_sentence_count),
+            ((len(csc.train_corpus.sentences)-
+                csc.train_corpus.multilingual_sentence_count) 
+                / len(csc.train_corpus.sentences)),
+            (len(csc.test_corpus.sentences)-
+                csc.test_corpus.multilingual_sentence_count),
+            ((len(csc.test_corpus.sentences)-
+                csc.test_corpus.multilingual_sentence_count) 
+                / len(csc.test_corpus.sentences)))
+
+    experiment_output += "{:<24}{:<10,}{:<8.3%}{:<10,}{:.3%}\n".format(
+            "Multilingual Sentences:",
+            (csc.train_corpus.multilingual_sentence_count),
+            (csc.train_corpus.multilingual_sentence_count 
+                / len(csc.train_corpus.sentences)),
+            (csc.test_corpus.multilingual_sentence_count),
+            (csc.test_corpus.multilingual_sentence_count 
+                / len(csc.test_corpus.sentences)))
+
     experiment_output += "\n"
 
-    experiment_output += "{:<24}{:,<10}{.3%}".format("Monolingual Sentences:")
+    experiment_output += "{:<46}{:<14,}{:<14,}\n".format(
+        "Total # of switches:", 
+        (csc.train_corpus.switch_count),
+        (csc.test_corpus.switch_count))
+
+
+    experiment_output += "{:<46}{:<14,.3}{:<14,.3}\n".format(
+        "Avg. # of switches per sentence:", 
+        (csc.train_corpus.switch_count / len(csc.train_corpus.sentences)),
+        (csc.test_corpus.switch_count / len(csc.test_corpus.sentences)))
+
+    '''
+    experiment_output += "{:<46}{:<14,.3}{:<14,.3}\n".format(
+        "Avg. # of switches per multilingual sentence:", 
+        (csc.train_corpus.switch_count 
+            / csc.train_corpus.multilingual_sentence_count),
+        (csc.test_corpus.switch_count 
+            / csc.train_corpus.multilingual_sentence_count))
+    '''
+
 
     print(experiment_output)
     return experiment_output

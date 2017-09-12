@@ -101,7 +101,6 @@ class Corpus():
         corpus_filepath -- The filepath to a normalized corpus
         """
         self.corpus_filepath = corpus_filepath
-        print(corpus_filepath)
         with open(corpus_filepath) as corpus_file:
             corpus_reader = csv.reader(corpus_file, delimiter=dl)
 
@@ -110,11 +109,15 @@ class Corpus():
             for row in corpus_reader:
                 self.read_row(row)
 
+        self.read_corpus_bookkeeping()
+
+    def read_corpus_bookkeeping(self):
         self.char_frequency = Counter(self.char_frequency)
 
         # Figure out the maximum sentence length in the list of sentences
         for sentence in self.sentences:
             self.maxsentlen = max(self.maxsentlen, len(sentence))
+
 
     def read_row(self, row):
 
@@ -222,7 +225,6 @@ class Corpus():
     def get_unk(self, c):
         unk = 'unk'
         if self.use_alphabets:
-            print(c)
             alph = list(self.ad.detect_alphabet(c))
             if alph and alph[0] in alphabets:
                 unk += alph[0]
@@ -333,6 +335,7 @@ class Corpus_CS_Langs(Corpus):
         self.switch_count = 0
         self.switch_label_counts = defaultdict(int)
         self.multilingual_sentence_count = 0
+        self.lang_stream = None
         Corpus._init_data(self)
 
     def __add__(self, other):
@@ -342,8 +345,9 @@ class Corpus_CS_Langs(Corpus):
     def _combine(self, corp, other):
         # NOTE: The proper functioning of this depends on both corpora being 
         # composed of completely different sentences.
-        corp.switch_count += other.switch_count 
-        corp.multilingual_sentence_count += other.multilingual_sentence_count
+        corp.switch_count += self.switch_count + other.switch_count 
+        corp.multilingual_sentence_count += (self.multilingual_sentence_count 
+            + other.multilingual_sentence_count)
 
         for k, v in self.switch_label_counts.items():
             corp.switch_label_counts[k] += v
@@ -380,14 +384,28 @@ class Corpus_CS_Langs(Corpus):
            return 'no_cs'
 
     def read_corpus(self, corpus_filepath, dl):
-        self.lang_stream = None
         Corpus.read_corpus(self, corpus_filepath, dl)
 
+    # REMOVED
+    '''
     def randomly_split_corpus(self, split=.9):
         new_corpus1 = Corpus_CS_Langs(train=True, use_alphabets=self.use_alphabets)
         new_corpus2 = Corpus_CS_Langs(use_alphabets=self.use_alphabets)
+
         return Corpus.randomly_split_corpus(self, split=split, 
             new_corpus1=new_corpus1, new_corpus2=new_corpus2)
+
+    def ext_add_sentence(self, sentence, labels, sname):
+        seen_cs = False
+        for label in labels:
+            if label == "cs":
+                self.switch_count += 1
+                if not seen_cs:
+                    self.multilingual_sentence_count += 1
+            # TODO: switch_label_counts
+        Corpus.ext_add_sentence(self, sentence, labels, sname)
+    '''
+           
 
 def print_np_sentences(np_sentences, idx2char):
     """Prints all sentences in the corpus."""
@@ -495,3 +513,24 @@ def compute_accuracy_metrics(y_test, y_pred, list_tags):
     results['fscore'] = fscore
     return results
 
+def randomly_read_CS_Langs_Corpus(corpus_filepath, train_corpus, test_corpus, 
+        dl=',', test_split=.1):
+    with open(corpus_filepath) as corpus_file:
+        corpus_reader = csv.reader(corpus_file, delimiter=dl)
+        # Skip the header
+        next(corpus_reader)
+        # Create a set of sentences belonging to train and test
+        train_sent = set()
+        test_sent = set()
+        for row in corpus_reader:
+            sname = ''.join(row[0].split(sep='_')[:-1])
+            if sname in train_sent:
+                train_corpus.read_row(row)
+            elif sname in test_sent:
+                train_corpus.read_row(row)
+            elif random.rand() > test_split:
+                train_corpus.read_row(row)
+                train_sent.add(sname)
+            else:
+                test_corpus.read_row(row)
+                test_sent.add(sname)
