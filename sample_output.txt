@@ -5,9 +5,11 @@ Model:
     Epochs Run:
     Epochs Expected:
     Patience: 
+    Start Date:
+    End Date:
     Start Time:
     End Time:
-    Total Time:
+    Total Processing Time:
     
     Hyper-parameters:
         CNN T1 Filter Dimensions: [#]
@@ -45,10 +47,12 @@ F-Score:         [#]           [#]
 Corpus Composition:
 
                         Train/Dev         Test
+Total sentences:        [###,###]         [###,###] [%%]%
 Monolingual sentences:  [###,###] [%]%    [###,###] [%%]%
 Multilingual sentences: [###,###] [%]%    [###,###] [%%]%
 
                                               Train/Dev    Test
+Total # of switches:                          [#]          [#]
 Avg. # of switches per sentence:              [#]          [#]
 Avg. # of switches per multilingual sentence: [#]          [#]
 
@@ -60,10 +64,6 @@ Code Switch Types:               Train/Dev    Test
     LANG2 PUNCT* to LANG1        [#]  [%]%    [#]  [%]%
     LANG1 OTHER* to LANG2        [#]  [%]%    [#]  [%]%
     LANG2 OTHER* to LANG1        [#]  [%]%    [#]  [%]%
-    LANG1 PUNCT* OTHER* to LANG2 [#]  [%]%    [#]  [%]%
-    LANG2 PUNCT* OTHER* to LANG1 [#]  [%]%    [#]  [%]%
-    LANG1 OTHER* PUNCT* to LANG2 [#]  [%]%    [#]  [%]%
-    LANG2 OTHER* PUNCT* to LANG1 [#]  [%]%    [#]  [%]%
 
   
     Token Types:  
