@@ -263,6 +263,7 @@ class CorpusTestCase(unittest.TestCase):
         self.assertEqual(self.corpus1_num_words, 
             sum([len(labels) for labels in self.corpus1.labels]))
 
+    '''
     def test_randomly_split_corpus_len_sentences(self):
         train_corpus, test_corpus = self.corpus1.randomly_split_corpus()
         self.assertEqual(len(self.corpus1.sentences), len(train_corpus.sentences) + len(test_corpus.sentences))
@@ -282,6 +283,7 @@ class CorpusTestCase(unittest.TestCase):
         train_corpus, test_corpus = self.corpus1.randomly_split_corpus()
         self.assertEqual(sorted(self.corpus1.sentences), 
             sorted(train_corpus.sentences + test_corpus.sentences))
+    '''
 
 
 class CorpusCSLangsTestCase(unittest.TestCase):
@@ -553,6 +555,38 @@ class CorpusCSLangsTestCase(unittest.TestCase):
         self.assertEqual(self.corpus1_num_words, 
             sum([len(labels) for labels in self.corpus1.labels]))
 
+class IndFuncsTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.corpora_filepaths = [Path('test/data/Corpus_corpus_de+ar.csv'),
+            Path('test/data/Corpus_corpus_fr+ar.csv')]
+
+       pass
+
+    def tearDown(self):
+       pass
+
+    def test_randomly_read_CS_Langs_Corpus_comb(self):
+       train_corpus = Corpus_CS_Langs_Corpus(train=True)
+       test_corpus = Corpus_CS_Langs_Corpus()
+       comb_corpus = Corpus_CS_Langs_Corpus()
+       for corpus in self.corpora_filepaths:
+           utils.randomly_read_CS_Langs_Corpus(corpus, train_corpus, test_corpus)
+           temp_corpus = Corpus_CS_Langs_Corpus()
+           temp_corpus.read_corpus(self, corpus, dl=',')
+           comb_corpus += temp_corpus
+       self.assertEqual(len(train_corpus.sentences) 
+               + len(test_corpus.sentences), len(comb_corpus.sentences))
+
+    def test_randomly_read_CS_Langs_Corpus_split(self):
+       train_corpus = Corpus_CS_Langs_Corpus(train=True)
+       test_corpus = Corpus_CS_Langs_Corpus()
+       for corpus in self.corpora_filepaths:
+           utils.randomly_read_CS_Langs_Corpus(corpus, train_corpus, test_corpus)
+       self.assertAlmostEqual(len(train_corpus.sentences) / .9, 10, delta=2)
+       self.assertAlmostEqual(len(test_corpus.sentences) / .1, 10, delta=2)
+
+    '''
     def test_randomly_split_corpus_len_sentences(self):
         train_corpus, test_corpus = self.corpus1.randomly_split_corpus()
         self.assertEqual(len(self.corpus1.sentences), len(train_corpus.sentences) + len(test_corpus.sentences))
@@ -572,6 +606,6 @@ class CorpusCSLangsTestCase(unittest.TestCase):
         train_corpus, test_corpus = self.corpus1.randomly_split_corpus()
         self.assertEqual(sorted(self.corpus1.sentences), 
             sorted(train_corpus.sentences + test_corpus.sentences))
-
+    '''
 
 
