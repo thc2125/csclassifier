@@ -42,12 +42,12 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
     start_time = time.process_time()
     start_date = datetime.date.today()
     corpus_patt = re.compile(corpus_filename_prefix + '.')
+    c_f_fp = Path(corpus_folder_filename)
 
     # Create the test and training corpora
     # If we're testing on a single language pair
     if excluded_corpus_filename:
         # First ingest all the corpora
-        c_f_fp = Path(corpus_folder_filename)
         corpora = {}
         for f in c_f_fp.iterdir():
             if corpus_patt.match(f.name):
@@ -73,7 +73,7 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
         test_corpus = Corpus_CS_Langs(use_alphabets=use_alphabets)
         for f in c_f_fp.iterdir():
             if corpus_patt.match(f.name):
-                utils.randomly_read_CS_Langs_Corpus(str(f), train_corpus, 
+                utils.randomly_read_Corpus_CS_Langs(str(f), train_corpus, 
                     test_corpus, dl=',')
                 langs = f.name.replace(corpus_filename_prefix,'')
                 all_langs += [langs]
@@ -86,8 +86,8 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
     maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
     maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)
 
-    label2idx = train_corpus.label2idx
-    idx2label = train_corpus.idx2label
+    label2idx = train_corpus.cs_label2idx
+    idx2label = train_corpus.cs_idx2label
 
     char2idx, idx2char = train_corpus.create_dictionary()
     csc = CSClassifier(maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
@@ -221,7 +221,7 @@ def produce_output(
             "Total Sentences:", 
             (len(csc.train_corpus.sentences)),
             (len(csc.test_corpus.sentences)))
-    experiment_output += "{:<24}{:<10,}{:<8.3%}{:<10,}{:.3%}\n".format(
+    experiment_output += "{:<24}{:<10,}{:<8.2%}{:<10,}{:.2%}\n".format(
             "Monolingual Sentences:",
             (len(csc.train_corpus.sentences)-
                 csc.train_corpus.multilingual_sentence_count),
@@ -234,7 +234,7 @@ def produce_output(
                 csc.test_corpus.multilingual_sentence_count) 
                 / len(csc.test_corpus.sentences)))
 
-    experiment_output += "{:<24}{:<10,}{:<8.3%}{:<10,}{:.3%}\n".format(
+    experiment_output += "{:<24}{:<10,}{:<8.2%}{:<10,}{:.2%}\n".format(
             "Multilingual Sentences:",
             (csc.train_corpus.multilingual_sentence_count),
             (csc.train_corpus.multilingual_sentence_count 
@@ -256,14 +256,17 @@ def produce_output(
         (csc.train_corpus.switch_count / len(csc.train_corpus.sentences)),
         (csc.test_corpus.switch_count / len(csc.test_corpus.sentences)))
 
-    '''
     experiment_output += "{:<46}{:<14,.3}{:<14,.3}\n".format(
         "Avg. # of switches per multilingual sentence:", 
         (csc.train_corpus.switch_count 
             / csc.train_corpus.multilingual_sentence_count),
         (csc.test_corpus.switch_count 
             / csc.train_corpus.multilingual_sentence_count))
-    '''
+
+    experiment_output += "\n"
+    experiment_output += "\n"
+
+
 
 
     print(experiment_output)
