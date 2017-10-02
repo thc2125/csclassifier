@@ -13,22 +13,17 @@ import csv
 import os
 import sys
 import random
+import re
 
 from collections import defaultdict
 from math import sqrt, floor
 from pathlib import Path
-from copy import deepcopy
 
 import numpy as np
 from keras.utils import to_categorical
 
 from alphabet_detector import AlphabetDetector
 from unicode_alphabets import alphabets
-
-
-                
-
-           
 
 def print_np_sentences(np_sentences, idx2char):
     """Prints all sentences in the corpus."""
@@ -136,27 +131,6 @@ def compute_accuracy_metrics(y_test, y_pred, list_tags):
     results['fscore'] = fscore
     return results
 
-def randomly_read_Corpus_CS_Langs(corpus_filepath, train_corpus, test_corpus, 
-        dl=',', test_split=.1):
-    with open(corpus_filepath) as corpus_file:
-        corpus_reader = csv.reader(corpus_file, delimiter=dl)
-        # Skip the header
-        next(corpus_reader)
-        # Create a set of sentences belonging to train and test
-        train_sent = set()
-        test_sent = set()
-        for row in corpus_reader:
-            sname = ''.join(row[0].split(sep='_')[:-1])
-            if sname in train_sent:
-                train_corpus.read_row(row)
-            elif sname in test_sent:
-                test_corpus.read_row(row)
-            elif random.random() > test_split:
-                train_corpus.read_row(row)
-                train_sent.add(sname)
-            else:
-                test_corpus.read_row(row)
-                test_sent.add(sname)
 
 def np_idx_conversion(self, maxsentlen, maxwordlen):
         # Convert the sentences and labels to lists of indices
@@ -207,7 +181,6 @@ def label_idx_conversion(self, maxsentlen, maxwordlen):
             for list_slabels in list_cat_labels])
 
         return list_labels, list_labels_weights
- 
 
 def unk_replace(self, c):
         # Formula sourced from Quora:
@@ -226,39 +199,51 @@ def unk_replace(self, c):
             return False
 
 def get_unk(self, c):
-        unk = 'unk'
-        if self.use_alphabets:
-            alph = list(self.ad.detect_alphabet(c))
-            if alph and alph[0] in alphabets:
-                unk += alph[0]
-        return unk
+    unk = 'unk'
+    if self.use_alphabets:
+        alph = list(self.ad.detect_alphabet(c))
+        if alph and alph[0] in alphabets:
+            unk += alph[0]
+    return unk
 
 def create_dictionary(self):
-        self.idx2char = []
-        # Set the zero index to the null character
-        self.idx2char.append('\0')
-        self.char2idx = defaultdict(int)
-        # set the null character index to zero
-        self.char2idx['\0'] = 0
+    self.idx2char = []
+    # Set the zero index to the null character
+    self.idx2char.append('\0')
+    self.char2idx = defaultdict(int)
+    # set the null character index to zero
+    self.char2idx['\0'] = 0
 
-        for sentence in self.sentences:
-            for word in sentence:
-                for c in word:
-                    if c not in self.char2idx:
-                        self.char2idx[c] = len(self.idx2char)
-                        self.idx2char.append(c)
+    for sentence in self.sentences:
+        for word in sentence:
+            for c in word:
+                if c not in self.char2idx:
+                    self.char2idx[c] = len(self.idx2char)
+                    self.idx2char.append(c)
 
 
-        if self.use_alphabets:
-            # Add indices for unseen chars for each alphabet representable 
-            # by unicode
-            for a in alphabets:
-                self.char2idx['unk' + a] += len(self.idx2char)
-                self.idx2char.append('unk' + a)
-        # Finally add a generic unknown character
-        self.char2idx['unk'] += len(self.idx2char)
-        self.idx2char.append('unk')
+    if self.use_alphabets:
+        # Add indices for unseen chars for each alphabet representable 
+        # by unicode
+        for a in alphabets:
+            self.char2idx['unk' + a] += len(self.idx2char)
+            self.idx2char.append('unk' + a)
+    # Finally add a generic unknown character
+    self.char2idx['unk'] += len(self.idx2char)
+    self.idx2char.append('unk')
 
-        return self.char2idx, self.idx2char
+    return self.char2idx, self.idx2char
 
+def deduce_cs_langs(cs_corpus_dirname):
+    """Deduce the languages of code-switched tweets based on path names
+    Keyword arguments:
+    cs_corpus_dirpath -- a Path object 
+    """
+    lang_pattern = re.compile("[a-z]{2,2}[+][a-z]{2,2}")
+    matches = lang_pattern.search(cs_corpus_dirname)
+    if matches:
+        langs = matches.group(0).split('+')
+        return (langs[0], langs[1])
+    else:
+        return (None, None)
 

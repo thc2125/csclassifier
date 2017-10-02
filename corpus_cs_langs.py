@@ -10,8 +10,9 @@ class Corpus_CS_Langs(Corpus):
         """
         cs_label2idx = {'<PAD>':0, 'no_cs': 1, 'cs':2}
         cs_idx2label = {i:l for l, i in label2idx.items()}
-        label_dictionary = {'<PAD>':0, 'lang1':1, 'lang2':2, 'punct':3, 
-            'other':4}
+
+        self.lang_pairs = set()
+
 
         Corpus.__init__(self, char_dictionary,
                 label_dictionary=label_dictionary, train=train, 

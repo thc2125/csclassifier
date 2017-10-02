@@ -9,7 +9,6 @@
 # Model design as described by Jaech et. al. in
 # "A Neural Model for Language Identification in Code-Switched Tweets"
 
-
 import argparse
 import csv
 import random
@@ -22,7 +21,6 @@ import datetime
 from math import ceil
 from pathlib import Path, PurePath
 
-
 import numpy as np
 from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
@@ -34,55 +32,26 @@ from utils import Corpus, Corpus_CS_Langs
 from classifier import Classifier
 from csclassifier import CSClassifier
 
+def main(corpora_dirpath, 
+         output_dirpath='.', 
+         excluded_langs=set(), 
+         corpus_filename_prefix='twitter_cs_', 
+         use_alphabets=False, 
+         epochs=50, 
+         batch_size=25, 
+         patience=2):
 
-def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=None, 
-    corpus_filename_prefix = 'normalized-twitter_cs_', use_alphabets=False, 
-    epochs=50, batch_size=25, patience=2):
-
+    # Begin the timer.
     start_time = time.process_time()
     start_date = datetime.date.today()
+
     corpus_patt = re.compile(corpus_filename_prefix + '.')
-    c_f_fp = Path(corpus_folder_filename)
 
     # Create the test and training corpora
-    # If we're testing on a single language pair
-    if excluded_corpus_filename:
-        # First ingest all the corpora
-        corpora = {}
-        for f in c_f_fp.iterdir():
-            if corpus_patt.match(f.name):
-                corpus = Corpus_CS_Langs(use_alphabets=use_alphabets)
-                corpus.read_corpus(str(f), dl=',')
-                langs = f.name.replace(corpus_filename_prefix,'')
-                corpora[langs] = corpus
-
-        test_langs = [Path(excluded_corpus_filename).name.replace(corpus_filename_prefix,'')]
-        train_langs = []
-        test_corpus = corpora[test_langs[0]]
-        train_corpus = Corpus_CS_Langs(train=True)
-        for langs in corpora.keys():
-            if langs != test_langs:
-                train_langs += [langs]
-                train_corpus = train_corpus + corpora[langs]
-
-    # Otherwise if we're testing on a randomized split of the data
-    else:
-
-        all_langs = []
-        train_corpus = Corpus_CS_Langs(use_alphabets=use_alphabets, train=True)
-        test_corpus = Corpus_CS_Langs(use_alphabets=use_alphabets)
-        for f in c_f_fp.iterdir():
-            if corpus_patt.match(f.name):
-                utils.randomly_read_Corpus_CS_Langs(str(f), train_corpus, 
-                    test_corpus, dl=',')
-                langs = f.name.replace(corpus_filename_prefix,'')
-                all_langs += [langs]
-
-        train_corpus.read_corpus_bookkeeping()
-        test_corpus.read_corpus_bookkeeping()
-
-        train_langs, test_langs = all_langs, all_langs
-
+    train_corpus, test_corpus = create_corpora(corpora_dirpath, 
+                                               corpus_patt, 
+                                               excluded_langs)
+        
     maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
     maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)
 
@@ -112,9 +81,70 @@ def main(corpus_folder_filename, output_dirname='.', excluded_corpus_filename=No
     #del test_corpus
     #del train_corpus
 
-def produce_output(
-        batch_size, epochs_expected, csc, start_date, end_date, start_time, 
-            end_time, use_alphabets, metrics):
+
+def create_corpora(corpora_dirpath, corpus_patt, excluded_langs=set()):
+    train_corpus = Corpus_CS_Langs()
+    test_corpus = Corpus_CS_Langs()
+    for corpus_filepath in corpora_dirpath.iterdir():
+        if corpus_patt.match(corpus_filepath.name):
+            langs = utils.deduce_cs_langs(corpus_filepath.name)
+            if excluded_langs == set():
+                randomly_read_corpus(corpus_filepath, 
+                                     langs,
+                                     train_corpus, 
+                                     test_corpus)
+            else:
+                read_corpus(corpus_filepath, 
+                            langs,
+                            excluded_langs,
+                            train_corpus, 
+                            test_corpus)
+
+    return train_corpus, test_corpus
+
+def read_corpus(corpus_filepath, 
+                langs, 
+                excluded_langs, 
+                train_corpus, 
+                test_corpus):
+    if ((langs[0] not in excluded_langs) and
+        (langs[1] not in excluded_langs)):
+        train_corpus.read_corpus(corpus_filepath, langs)
+    else:
+        test_corpus.read_corpus(corpus_filepath, langs)
+
+
+def randomly_read_corpus(corpus_filepath, langs, dl='\t', test_split=.1):
+
+    with open(corpus_filepath) as corpus_file:
+        corpus_reader = csv.reader(corpus_file, delimiter=dl)
+
+        # Skip the header
+        next(corpus_reader)
+
+        for row in corpus_reader:
+            sentence_id = Corpus_CS_Langs.get_sentence_id(row[0])
+
+            if sentence_id in train_corpus.sentence2sidx:
+                train_corpus.read_row(row, corpus_filepath.name, langs)
+            elif sentence_id in test_corpus.sentence2sidx:
+                test_corpus.read_row(row, corpus_filepath.name, langs)
+            elif random.random() > test_split:
+                train_corpus.read_row(row, corpus_filepath.name, langs)
+            else:
+                test_corpus.read_row(row, corpus_filepath.name, langs)
+
+    return train_corpus, test_corpus
+
+def produce_output(batch_size, 
+                   epochs_expected, 
+                   csc, 
+                   start_date, 
+                   end_date, 
+                   start_time, 
+                   end_time, 
+                   use_alphabets, 
+                   metrics):
 
     # Let's start with experiment parameters
     experiment_output = "CSCLASSIFIER MODEL RESULTS:\n\n"
@@ -266,24 +296,23 @@ def produce_output(
     experiment_output += "\n"
     experiment_output += "\n"
 
-
-
-
     print(experiment_output)
     return experiment_output
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A neural network based'
         + 'classifier for detecting code switching.') 
-    parser.add_argument('corpus_filepath', metavar='C', type=str,
-            help='Filepath to the corpus.')
+    parser.add_argument('corpora_dir', metavar='C', type=str,
+            help='Filepath to the corpora.')
     parser.add_argument('-o', '--output_dir', metavar='O', type=str,
             help='Directory to store checkpoint and model files')
-    parser.add_argument('-x', '--excluded_corpus', metavar='X', type=str,
-            help='Filename of corpus to be excluded from training and instead'
-                + 'tested on')
+    parser.add_argument('-x', '--excluded_langs', metavar='X', type=str,
+            help='Language pairs to be excluded from training and instead'
+                + 'tested on, using the form <la+la>')
     parser.add_argument('-a', '--use_alphabets', action='store_true',
-            help="Whether to use alphabetically based unknowns.")
+            help="Whether to use alphabetically based unknown character"
+                + " vectors.")
     parser.add_argument('-p', '--prefix', metavar='P', type=str,
             help='Corpus filename prefix')
     parser.add_argument('-e', '--epochs', metavar='E', type=int,
@@ -295,11 +324,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main_args = {}
-    main_args['corpus_folder_filename'] = args.corpus_filepath
+    main_args['corpora_dirpath'] = Path(args.corpora_dir)
     if args.output_dir:
-        main_args['output_dirname'] = args.output_dir
-    if args.excluded_corpus:
-        main_args['excluded_corpus_filename'] = args.excluded_corpus
+        main_args['output_dirpath'] = Path(args.output_dir)
+    if args.excluded_langs:
+        main_args['excluded_langs'] = set(args.excluded_corpus.split('+'))
     if args.use_alphabets:
        main_args['use_alphabets'] = args.use_alphabets
     if args.prefix:
@@ -310,3 +339,4 @@ if __name__ == '__main__':
         main_args['patience'] = args.patience
        
     main(**main_args)
+
