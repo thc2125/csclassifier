@@ -6,7 +6,7 @@
 
 import csv
 
-from collections import defaultdict
+from collections import Counter
 
 class Corpus():
     # TODO: Add a label set to indicate malformed data
@@ -21,8 +21,8 @@ class Corpus():
         self.labels=[]
         self.sentence2sidx = {}
 
-        self.char_frequency = defaultdict(int)
-        self.label_frequency = defaultdict(int)
+        self.char_frequency = Counter()
+        self.label_frequency = Counter()
 
         self.filenames = set()
 
@@ -55,31 +55,31 @@ class Corpus():
         # NOTE: This puts a max word length on a word
         # Length arbitrary based on
         # len("supercalifragilisticexpialidocious")
-        if len(word) > WORD_LEN_LIMIT:
+        if len(word) > self.WORD_LEN_LIMIT:
            return
 
         # Add to the set of filenames and language pairs
         self.filenames.add(corpus_filename)
            
         # Remove the word id at the end of the sentence name
-        sentence_id = get_sentence_id(row[0])
+        sentence_id = self.get_sentence_id(row[0])
 
         if sentence_id not in self.sentence2sidx:
            self._add_sentence(sentence_id)
 
         label = self.label_word(row[2])
 
-        sidx = self.sentence_id2sidx[sentence_id]
+        sidx = self.sentence2sidx[sentence_id]
         self.sentences[sidx].append(word)
         self.labels[sidx].append(label)
 
         self.maxwordlen = max(self.maxwordlen, len(word))
         self.maxsentlen = max(self.maxsentlen, 
-            len(self.sentences[self.sentence2sidx[sname]]))
+            len(self.sentences[self.sentence2sidx[sentence_id]]))
 
         # Get the character frequency for a word.
         for c in word:
-           self.char_frequency[c] += 1
+           self.char_frequency.update(c)
 
 
     def _add_sentence(self, sname):
@@ -88,9 +88,9 @@ class Corpus():
            self.labels.append([])
 
     def label_word(self, label):
-        self.label_frequency[label] += 1
+        self.label_frequency.update([label])
         return label
 
     @staticmethod
     def get_sentence_id(word_id):
-        "".join(word_id.split(sep='_')[:-1])
+        return "_".join(word_id.split(sep='_')[:-1])
