@@ -48,55 +48,8 @@ class Corpus_CS_Langs(Corpus):
 
     def read_corpus(self, corpus_filepath, dl):
         Corpus.read_corpus(self, corpus_filepath, dl)
-        for slabels in self.labels:
-            cs_slabels = []
-            fragments, fragment_indices = (compute_switch_errors())
-            last_index = 0
-            for fragment_index in range(len(fragments)):
-                # Add to the CS label counts
-                self.switch_label_counts[tuple(fragments[fragment_index])] += 1
-                
-                # Create a list of CS labels for the fragment and any 
-                # labels between the previous fragment and the current one
-                cs_slabels += (['no_cs'] * (len(fragments[fragment_index])-1 
-                        + (fragment_indices[fragment_index][0]-last_index-1)))
-                cs_slabels += ['cs']
-                # Store the last index 
-                last_index = fragment_indices[fragment_index][-1]
-            # Add the CS labels to the corpus cs labels
-            self.cs_labels.append(cs_slabels)
 
 
-    # Credit Victor Soto
-    def switch_at_the_fringe(langids):
-        return (langids[0] == 'lang1' and langids[-1] == 'lang2') or (langids[0] == 'lang2' and langids[-1] == 'lang1')
-
-    # Credit Victor Soto
-    def compute_switch_errors(true_tags):
-        num_switches = 0
-        num_tokens_in_switch = 0
-        j0 = 0
-        j1 = 1
-        fragment_labels = []
-        fragment_indices = []
-        while(j0 < j1 and j1 < len(true_tags)):
-                while true_tags[j0]!='lang2' and true_tags[j0]!='lang1' and j0 < len(true_tags) - 1:
-                        j0+=1
-                        j1=j0 + 1
-                if switch_at_the_fringe(true_tags[j0:j1+1]):
-                        fragment_labels.append(true_tags[j0:j1+1])
-                        fragment_indices.append(list(range(j0, j1+1)))
-                        num_switches +=1
-                        num_tokens_in_switch = j1 + 1 - j0
-                        j0 = j1
-                        j1 += 1
-                else:
-                        j1 += 1
-                        if j1 < len(true_tags) and true_tags[j0] == true_tags[j1-1]:
-                                j0 = j1-1
-        if j0>=j1:
-                raise Exception('This should not happen.')
-        return fragment_labels, fragment_indices
 
 
     def read_corpus(self, corpus_filepath, dl):
