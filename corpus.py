@@ -17,79 +17,77 @@ class Corpus():
         self.maxwordlen = 0
         self.maxsentlen = 0
 
-        self.sentences=[]
-        self.labels=[]
+        self.sentences = []
+        self.slabels = []
+        self.slangs = []
         self.sentence2sidx = {}
 
         self.char_frequency = Counter()
         self.label_frequency = Counter()
+        self.lang_frequency = Counter()
+
 
         self.filenames = set()
 
-    def read_corpus(self, corpus_filepath, dl='\t'):
-        """Reads in a corpus file and sets the corpus variables.
+    def ingest_token(self, token_entry, corpus_filename):
+        """Reads a csv token_entry and updates the Corpus variables.
     
         Keyword arguments:
-        corpus_filepath -- The filepath to a normalized corpus
-        langs -- A tuple of 2-character language codes to be found in the corpus
+        token_entry -- a dictionary of csv field names to values 
+                       ([sentence_id, word, langid,label])
+        corpus_filename -- a filename of the corpus ingested
         """
 
-        with corpus_filepath.open() as corpus_file:
-            corpus_reader = csv.reader(corpus_file, delimiter=dl)
-
-            # Skip the header
-            next(corpus_reader)
-            for row in corpus_reader:
-                self.read_row(row, corpus_filepath.name)
-
-    def read_row(self, row, corpus_filename):
-        """Reads a csv row and updates the Corpus variables.
-    
-        Keyword arguments:
-        file
-        row -- a list of csv row values ([sentence_id, word, lang_label,...])
-        """
-
-        word = row[1]
-
-        # NOTE: This puts a max word length on a word
+        word = token_entry['token']
+        # NOTE: This puts a max word length on a word.
         # Length arbitrary based on
         # len("supercalifragilisticexpialidocious")
         if len(word) > self.WORD_LEN_LIMIT:
            return
 
+        label =token_entry['label']
+        lang = token_entry['lang']
+
         # Add to the set of filenames and language pairs
         self.filenames.add(corpus_filename)
            
         # Remove the word id at the end of the sentence name
-        sentence_id = self.get_sentence_id(row[0])
+        sentence_id = self.get_sentence_id(token_entry['token_id'])
 
         if sentence_id not in self.sentence2sidx:
            self._add_sentence(sentence_id)
 
-        label = self.label_word(row[2])
-
         sidx = self.sentence2sidx[sentence_id]
-        self.sentences[sidx].append(word)
-        self.labels[sidx].append(label)
 
-        self.maxwordlen = max(self.maxwordlen, len(word))
-        self.maxsentlen = max(self.maxsentlen, 
-            len(self.sentences[self.sentence2sidx[sentence_id]]))
-
-        # Get the character frequency for a word.
-        for c in word:
-           self.char_frequency.update(c)
-
+        self._add_word(word, sidx)
+        self._add_label(label, sidx)
+        self._add_lang(lang, sidx)
 
     def _add_sentence(self, sname):
            self.sentence2sidx[sname] = len(self.sentences)
            self.sentences.append([])
-           self.labels.append([])
+           self.slabels.append([])
 
-    def label_word(self, label):
+    def _add_word(self, word, sidx)
+        self.sentences[sidx].append(word)
+
+        self.maxwordlen = max(self.maxwordlen, len(word))
+        self.maxsentlen = max(self.maxsentlen, 
+            len(self.sentences[sidx]))
+
+        # Get the character frequency for a word.
+        for c in word:
+            self.char_frequency.update(c)
+
+    def _add_label(self, label, sidx):
+        self.slabels[sidx].append(label)
         self.label_frequency.update([label])
         return label
+
+    def _add_lang(self, lang, sidx):
+        self.slangs[sidx].append(lang)
+        self.lang_frequency.update([lang])
+        return lang
 
     @staticmethod
     def get_sentence_id(word_id):
