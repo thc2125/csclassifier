@@ -25,6 +25,62 @@ from keras.utils import to_categorical
 from alphabet_detector import AlphabetDetector
 from unicode_alphabets import alphabets
 
+def read_corpus(corpus,
+                corpus_filepath, 
+                langs,
+                dl='\t')
+
+"""Reads in a corpus file and sets the corpus variables.
+    
+Keyword arguments:
+corpus -- A corpus object to ingest the file
+corpus_filepath -- The filepath to a normalized corpus file
+langs -- A tuple of 2-character language codes to be found in the corpus
+"""
+
+    with corpus_filepath.open() as corpus_file:
+        corpus_reader = csv.DictReader(corpus_file, delimiter=dl)
+
+        # Skip the header
+        next(corpus_reader)
+        for token_entry in corpus_reader:
+            corpus.ingest_token(token_entry, corpus_filepath.name)
+
+def randomly_read_corpus(corpus1, 
+                         corpus2, 
+                         corpus_filepath, 
+                         langs, 
+                         dl='\t', 
+                         test_split=.1):
+"""Reads in a corpus file, splitting between two corpus objects.
+    
+Keyword arguments:
+corpus -- A corpus object to ingest the file
+corpus_filepath -- The filepath to a normalized corpus file
+langs -- A tuple of 2-character language codes to be found in the corpus
+"""
+
+    with open(corpus_filepath) as corpus_file:
+        corpus_reader = csv.reader(corpus_file, delimiter=dl)
+
+        # Skip the header
+        next(corpus_reader)
+
+        for row in corpus_reader:
+            sentence_id = Corpus_CS_Langs.get_sentence_id(row[0])
+
+            if sentence_id in corpus1.sentence2sidx:
+                corpus1.read_row(row, corpus_filepath.name, langs)
+            elif sentence_id in corpus2.sentence2sidx:
+                corpus2.read_row(row, corpus_filepath.name, langs)
+            elif random.random() > test_split:
+                corpus1.read_row(row, corpus_filepath.name, langs)
+            else:
+                corpus2.read_row(row, corpus_filepath.name, langs)
+
+    return corpus1, corpus2
+
+
 def print_np_sentences(np_sentences, idx2char):
     """Prints all sentences in the corpus."""
     for np_sentence in np_sentences:
