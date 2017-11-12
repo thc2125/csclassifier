@@ -1,22 +1,12 @@
 from corpus import Corpus
 
 class Corpus_CS_Langs(Corpus):
-    def __init__(self, char_dictionary=(None, None), train=False, use_alphabets=False):
-        """Reads in a corpus file and sets the corpus variables.
-    
-        Keyword arguments:
-        dictionary -- A tuple of dictionaries for characters to indices and
-                      indices to characters
-        """
-        cs_label2idx = {'<PAD>':0, 'no_cs': 1, 'cs':2}
-        cs_idx2label = {i:l for l, i in label2idx.items()}
+    def __init__(self):
 
-        self.lang_pairs = set()
+        Corpus.__init__(self)
 
-
-        Corpus.__init__(self, char_dictionary,
-                label_dictionary=label_dictionary, train=train, 
-                 use_alphabets=use_alphabets)
+        self.scslabels = []
+        self.cslabel_frequency = Counter()
 
     def _init_data(self):
         self.switch_count = 0
@@ -25,35 +15,20 @@ class Corpus_CS_Langs(Corpus):
         self.cs_labels = []
         Corpus._init_data(self)
 
-    def __add__(self, other):
-        corp = Corpus_CS_Langs()
-        return self._combine(corp, other)
+    def ingest_token(self, token_entry, corpus_filename):
+        sidx = Corpus.ingest_token(self, token_entry, corpus_filename)
+        if(not sidx):
+            return None
+        cslabel = token_entry['cs_label']
+        self._add_cslabel(cslabel, sidx)
 
-    def _combine(self, corp, other):
-        # NOTE: The proper functioning of this depends on both corpora being 
-        # composed of completely different sentences.
-        corp.switch_count += self.switch_count + other.switch_count 
-        corp.multilingual_sentence_count += (self.multilingual_sentence_count 
-            + other.multilingual_sentence_count)
+    def _add_cslabel(self, cslabel, sidx):
+        self.scslabels[sidx].append(cslabel)
+        self.cslabel_frequency.update([cslabel])
+        return cslabel
 
-        for k, v in self.switch_label_counts.items():
-            corp.switch_label_counts[k] += v
-        for k, v in other.label_counts.items():
-            corp.switch_label_counts[k] += v
-
-        corp.cs_labels += self.cs_labels + other.cs_labels
-
-
-        return Corpus._combine(self, corp, other)
-
-    def read_corpus(self, corpus_filepath, dl):
-        Corpus.read_corpus(self, corpus_filepath, dl)
-
-
-
-
-    def read_corpus(self, corpus_filepath, dl):
-        Corpus.read_corpus(self, corpus_filepath, dl)
+    def get_cslabels(self):
+        return list(self.cslabel_frequency.keys())
 
     def np_idx_conversion(self, maxsentlen, maxwordlen):
         list_sentences, list_labels, list_labels_weights = (
