@@ -12,8 +12,6 @@
 import argparse
 import csv
 import random
-import pickle
-import os
 import re
 import time
 import datetime
@@ -34,7 +32,7 @@ from csclassifier import CSClassifier
 
 def main(corpora_dirpath, 
          output_dirpath='.', 
-         excluded_langs=set(), 
+         excluded_langs=None, 
          corpus_filename_prefix='twitter_cs_', 
          use_alphabets=False, 
          epochs=50, 
@@ -55,12 +53,21 @@ def main(corpora_dirpath,
     maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
     maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)
 
-    label2idx = train_corpus.cs_label2idx
-    idx2label = train_corpus.cs_idx2label
-
-    char2idx, idx2char = train_corpus.create_dictionary()
-    csc = CSClassifier(maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
-        idx2char, epochs, batch_size, patience, train_langs, test_langs)
+    idx2label, label2idx = utils.get_cslabels(train_corpus)
+    
+    idx2char, char2idx = utils.get_chars(train_corpus, use_alphabets)
+    csc = CSClassifier(maxsentlen, 
+                       maxwordlen, 
+                       label2idx, 
+                       idx2label, 
+                       char2idx, 
+                       idx2char, 
+                       epochs, 
+                       batch_size, 
+                       patience,
+                       use_alphabets,
+                       train_corpus.get_langs(),
+                       test_corpus.get_langs())
 
     print()
     print("Beginning Training. Excluding " 
@@ -78,61 +85,24 @@ def main(corpora_dirpath,
     output = ([batch_size, epochs, csc, start_date, end_date, start_time, end_time, use_alphabets,
               metrics])
     return produce_output(*output)
-    #del test_corpus
-    #del train_corpus
 
-
-def create_corpora(corpora_dirpath, corpus_patt, excluded_langs=set()):
+def create_corpora(corpora_dirpath, corpus_patt, excluded_langs=None):
     train_corpus = Corpus_CS_Langs()
     test_corpus = Corpus_CS_Langs()
     for corpus_filepath in corpora_dirpath.iterdir():
         if corpus_patt.match(corpus_filepath.name):
             langs = utils.deduce_cs_langs(corpus_filepath.name)
-            if excluded_langs == set():
-                randomly_read_corpus(corpus_filepath, 
-                                     langs,
-                                     train_corpus, 
-                                     test_corpus)
+            if not excluded_langs:
+                utils.randomly_read_corpus(train_corpus,
+                                     test_corpus,
+                                     corpus_filepath, 
+                                     langs)
             else:
-                read_corpus(corpus_filepath, 
-                            langs,
-                            excluded_langs,
-                            train_corpus, 
-                            test_corpus)
-
-    return train_corpus, test_corpus
-
-def read_corpus(corpus_filepath, 
-                langs, 
-                excluded_langs, 
-                train_corpus, 
-                test_corpus):
-    if ((langs[0] not in excluded_langs) and
-        (langs[1] not in excluded_langs)):
-        train_corpus.read_corpus(corpus_filepath, langs)
-    else:
-        test_corpus.read_corpus(corpus_filepath, langs)
-
-
-def randomly_read_corpus(corpus_filepath, langs, dl='\t', test_split=.1):
-
-    with open(corpus_filepath) as corpus_file:
-        corpus_reader = csv.reader(corpus_file, delimiter=dl)
-
-        # Skip the header
-        next(corpus_reader)
-
-        for row in corpus_reader:
-            sentence_id = Corpus_CS_Langs.get_sentence_id(row[0])
-
-            if sentence_id in train_corpus.sentence2sidx:
-                train_corpus.read_row(row, corpus_filepath.name, langs)
-            elif sentence_id in test_corpus.sentence2sidx:
-                test_corpus.read_row(row, corpus_filepath.name, langs)
-            elif random.random() > test_split:
-                train_corpus.read_row(row, corpus_filepath.name, langs)
-            else:
-                test_corpus.read_row(row, corpus_filepath.name, langs)
+                if ((langs[0] not in excluded_langs) and
+                    (langs[1] not in excluded_langs)):
+                    utils.read_corpus(train_corpus, corpus_filepath, langs)
+                else:
+                    utils.read_corpus(test_corpus, corpus_filepath, langs)
 
     return train_corpus, test_corpus
 
@@ -309,7 +279,7 @@ if __name__ == '__main__':
             help='Directory to store checkpoint and model files')
     parser.add_argument('-x', '--excluded_langs', metavar='X', type=str,
             help='Language pairs to be excluded from training and instead'
-                + 'tested on, using the form <la+la>')
+                + 'tested on, using the form "<la>+<la>"')
     parser.add_argument('-a', '--use_alphabets', action='store_true',
             help="Whether to use alphabetically based unknown character"
                 + " vectors.")
