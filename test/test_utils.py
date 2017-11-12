@@ -1,17 +1,14 @@
 #!/usr/bin/python3
 
-
-
 import unittest
 import csv
+import numpy as np
 import random
 
 import utils
 from collections import defaultdict
 from collections import Counter
 from pathlib import Path
-
-import numpy as np
 
 word_col = 1
 dl = ','
