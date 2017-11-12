@@ -8,6 +8,8 @@ import csv
 
 from collections import Counter
 
+import utils
+
 class Corpus():
     # TODO: Add a label set to indicate malformed data
     WORD_LEN_LIMIT = 34
@@ -19,13 +21,12 @@ class Corpus():
 
         self.sentences = []
         self.slabels = []
-        self.slangs = []
+        #self.slangs = []
         self.sentence2sidx = {}
 
         self.char_frequency = Counter()
         self.label_frequency = Counter()
         self.lang_frequency = Counter()
-
 
         self.filenames = set()
 
@@ -43,7 +44,7 @@ class Corpus():
         # Length arbitrary based on
         # len("supercalifragilisticexpialidocious")
         if len(word) > self.WORD_LEN_LIMIT:
-           return
+           return None
 
         label =token_entry['label']
         lang = token_entry['lang']
@@ -52,7 +53,7 @@ class Corpus():
         self.filenames.add(corpus_filename)
            
         # Remove the word id at the end of the sentence name
-        sentence_id = self.get_sentence_id(token_entry['token_id'])
+        sentence_id = utils.get_sentence_id(token_entry['token_id'])
 
         if sentence_id not in self.sentence2sidx:
            self._add_sentence(sentence_id)
@@ -63,12 +64,14 @@ class Corpus():
         self._add_label(label, sidx)
         self._add_lang(lang, sidx)
 
+        return sidx
+
     def _add_sentence(self, sname):
            self.sentence2sidx[sname] = len(self.sentences)
            self.sentences.append([])
            self.slabels.append([])
 
-    def _add_word(self, word, sidx)
+    def _add_word(self, word, sidx):
         self.sentences[sidx].append(word)
 
         self.maxwordlen = max(self.maxwordlen, len(word))
@@ -78,6 +81,7 @@ class Corpus():
         # Get the character frequency for a word.
         for c in word:
             self.char_frequency.update(c)
+        return word
 
     def _add_label(self, label, sidx):
         self.slabels[sidx].append(label)
@@ -85,10 +89,16 @@ class Corpus():
         return label
 
     def _add_lang(self, lang, sidx):
-        self.slangs[sidx].append(lang)
+        #self.slangs[sidx].append(lang)
         self.lang_frequency.update([lang])
         return lang
 
-    @staticmethod
-    def get_sentence_id(word_id):
-        return "_".join(word_id.split(sep='_')[:-1])
+    def get_chars(self):
+        return list(self.char_frequency.keys())
+
+    def get_labels(self):
+        return list(self.label_frequency.keys())
+
+    def get_langs(self):
+        return list(self.lang_frequency.keys())
+
