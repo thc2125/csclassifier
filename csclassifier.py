@@ -29,8 +29,19 @@ from utils import Corpus, Corpus_Aaron
 from classifier import Classifier
 
 class CSClassifier():
-    def __init__(self, maxsentlen, maxwordlen, label2idx, idx2label, char2idx, 
-        idx2char, epochs, batch_size, patience, train_langs, test_langs):
+    def __init__(self, 
+                 maxsentlen, 
+                 maxwordlen, 
+                 label2idx, 
+                 idx2label, 
+                 char2idx, 
+                 idx2char, 
+                 epochs, 
+                 batch_size, 
+                 patience, 
+                 use_alphabets,
+                 train_langs, 
+                 test_langs):
         self.maxsentlen = maxsentlen
         self.maxwordlen = maxwordlen
         self.label2idx = label2idx
@@ -40,27 +51,36 @@ class CSClassifier():
         self.epochs = epochs
         self.batch_size = batch_size
         self.patience = patience
- 
+        self.use_alphabets = use_alphabets
         self.train_langs = train_langs
+        self.identifier = hash(tuple(train_langs))
         self.test_langs = test_langs
 
     def generate_model(self, train_corpus, model=None, output_dirpath=PurePath('.')):
         #train_split = [ceil(9 * len(corpus.sentences)/10)]
         #train_split = [ceil(len(corpus.sentences)/100), 2 * ceil(len(corpus.sentences)/100)]
-        if train_corpus.maxsentlen > self.maxsentlen or train_corpus.maxwordlen > self.maxwordlen:
+        if (train_corpus.maxsentlen > self.maxsentlen or 
+            train_corpus.maxwordlen > self.maxwordlen):
             raise Exception("'train_corpus' has greater maxsentlen or maxwordlen")
 
         self.train_corpus = train_corpus
-        self.test_langs_names = 'ALL' if len(self.test_langs) > 1 else self.test_langs[0]
 
-        train_sentences, train_labels, train_labels_weights = self.train_corpus.np_idx_conversion(self.maxsentlen,
-            self.maxwordlen)
-
+        train_sentences, train_labels, train_labels_weights = (
+            utils.np_idx_conversion(
+                train_corpus, 
+                self.maxsentlen,
+                self.maxwordlen,
+                self.char2idx,
+                self.use_alphabets,
+                self.label2idx))
 
         num_labels = len(self.label2idx)
 
         # Build the model
-        self.classifier = Classifier(self.char2idx, self.maxsentlen, self.maxwordlen, num_labels)
+        self.classifier = Classifier(self.char2idx, 
+                                     self.maxsentlen, 
+                                     self.maxwordlen, 
+                                     num_labels)
 
         if model != None:
             # Load the model
@@ -73,19 +93,24 @@ class CSClassifier():
             if not checkpoints_dirpath.exists():
                 checkpoints_dirpath.mkdir()
             checkpoint = ModelCheckpoint(
-                filepath=str(checkpoints_dirpath/('checkpoint_'+self.test_langs_names+'_'
-                    +alph+'.{epoch:02d}--'+'{val_loss:.2f}.hdf5')),
-                    monitor='val_loss', mode='min')
+                    filepath=str(checkpoints_dirpath/('cp_'
+                                 + self.identifier
+                                 + "_"
+                                 + alph
+                                 + '.{epoch:02d}--'
+                                 + '{val_loss:.2f}.hdf5')),
+                    monitor='val_loss', 
+                    mode='min')
             stop_early = EarlyStopping(
-                monitor='val_categorical_accuracy',
-                patience=self.patience)
+                    monitor='val_categorical_accuracy',
+                    patience=self.patience)
             self.history = self.classifier.model.fit(x=train_sentences, y=train_labels,
                 epochs=self.epochs, batch_size=self.batch_size, validation_split=.1,
                 sample_weight=train_labels_weights, 
                 callbacks=[checkpoint, stop_early])
             # Save the model
             self.classifier.model.save(str(output_dirpath / 
-                ('cs_classifier_model_' + self.test_langs_names + '_' + alph + '.h5')))
+                ('cs_classifier_model_' + self.identifier + '_' + alph + '.h5')))
             self.trained_epochs = len(self.history.epoch)
         return self.classifier
 
