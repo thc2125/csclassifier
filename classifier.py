@@ -10,11 +10,35 @@ from keras.models import Model
 
 
 class Classifier:
-    def __init__(self, char2idx, maxsentlen, maxwordlen, num_labels, n_1=59,
-            n_2=108, lstm_dim=23, dropout_rate=.25, kernel_size=3, 
-            loss='categorical_crossentropy', 
-            optimizer='adam', learning_rate=.001, decay=0):
+    def __init__(self, 
+                 char_dicts, 
+                 label_dicts,
+                 maxsentlen, 
+                 maxwordlen, 
+                 model=None):
 
+        self.idx2char, self.char2idx = char_dicts
+        self.idx2label, self.label2idx = label_dicts
+        num_labels = len(self.idx2label)
+
+        self.maxsentlen = maxsentlen
+        self.maxwordlen = maxwordlen
+        if model:
+            elf.classifier.model = load_model(model)
+
+
+
+    def _generate_model(self, 
+                        n_1=59,
+                        n_2=108, 
+                        lstm_dim=23, 
+                        dropout_rate=.25, 
+                        kernel_size=3, 
+                        loss='categorical_crossentropy', 
+                        optimizer='adam', 
+                        learning_rate=.001, 
+                        decay=0):
+        # Create the model
         self.C = char2idx.values()
 
         self.Cdim = ceil(log(len(self.C), 2))
