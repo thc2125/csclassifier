@@ -10,283 +10,438 @@
 # "A Neural Model for Language Identification in Code-Switched Tweets"
 
 import argparse
-import csv
-import random
-import re
-import time
 import datetime
+import itertools
+import json
+import time
 
-from math import ceil
+from collections import OrderedDict
 from pathlib import Path, PurePath
 
-import numpy as np
-from keras.models import load_model
-from keras.callbacks import ModelCheckpoint
-
+import classifier
 import utils
-import csclassifier
 
-from utils import Corpus, Corpus_CS_Langs
-from classifier import Classifier
+from corpus_cs_langs import CorpusCSLangs
 from csclassifier import CSClassifier
 
-def main(corpora_dirpath, 
-         output_dirpath='.', 
-         excluded_langs=None, 
-         corpus_filename_prefix='twitter_cs_', 
-         use_alphabets=False, 
-         epochs=50, 
-         batch_size=25, 
-         patience=2):
 
+CORPUS_FILENAMES = {'train' : 'train_corpus.tsv', 'test' : 'test_corpus.tsv'}
+
+def run(corpora_dirpath, 
+        output_dirpath=Path('.'), 
+        excluded_langs=None, 
+        use_alphabets=False, 
+        epochs=50, 
+        batch_size=25, 
+        patience=2,
+        model_parameters=classifier.DEFAULT_HYPER_PARAMETERS):
+
+    experiment_parameters = {'use_alphabets':use_alphabets,
+                             'epochs':epochs,
+                             'batch_size':batch_size,
+                             'patience':patience}
+                            
     # Begin the timer.
     start_time = time.process_time()
-    start_date = datetime.date.today()
-
-    corpus_patt = re.compile(corpus_filename_prefix + '.')
+    start_date = datetime.datetime.now()
 
     # Create the test and training corpora
-    train_corpus, test_corpus = create_corpora(corpora_dirpath, 
-                                               corpus_patt, 
-                                               excluded_langs)
+    train_corpus, test_corpus = create_corpora(corpora_dirpath)
         
     maxsentlen = max(train_corpus.maxsentlen, test_corpus.maxsentlen)
     maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)
 
-    idx2label, label2idx = utils.get_cslabels(train_corpus)
-    
-    idx2char, char2idx = utils.get_chars(train_corpus, use_alphabets)
-    csc = CSClassifier(maxsentlen, 
-                       maxwordlen, 
-                       label2idx, 
-                       idx2label, 
-                       char2idx, 
-                       idx2char, 
-                       epochs, 
-                       batch_size, 
-                       patience,
-                       use_alphabets,
-                       train_corpus.get_langs(),
-                       test_corpus.get_langs())
+    chars = train_corpus.get_chars()
+    csc = CSClassifier(chars, maxsentlen, maxwordlen, use_alphabets, model_parameters)
 
     print()
-    print("Beginning Training. Excluding " 
-        + ('NONE' if len(test_langs)>1 else test_langs[0]))
+
+    print("Beginning Training.") 
+
     print()
        
-    csc.generate_model(train_corpus, output_dirpath=PurePath(output_dirname))
-    metrics = csc.evaluate_model(test_corpus)
+    csc.train_model(train_corpus, 
+                    output_dirpath=PurePath(output_dirpath), 
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    patience=patience)
+
+    print("Saving Model.")
+    model_path, model_history_path = csc.save_model(output_dirpath)
+    print(model_path)
+    print(model_history_path) 
+
     print()
 
-    
-    end_date = datetime.date.today()
-    end_time = time.process_time()
-    
-    output = ([batch_size, epochs, csc, start_date, end_date, start_time, end_time, use_alphabets,
-              metrics])
-    return produce_output(*output)
+    print("Evaluating Model.")
+    metrics = csc.evaluate_model(test_corpus)
 
-def create_corpora(corpora_dirpath, corpus_patt, excluded_langs=None):
-    train_corpus = Corpus_CS_Langs()
-    test_corpus = Corpus_CS_Langs()
-    for corpus_filepath in corpora_dirpath.iterdir():
-        if corpus_patt.match(corpus_filepath.name):
-            langs = utils.deduce_cs_langs(corpus_filepath.name)
-            if not excluded_langs:
-                utils.randomly_read_corpus(train_corpus,
-                                     test_corpus,
-                                     corpus_filepath, 
-                                     langs)
-            else:
-                if ((langs[0] not in excluded_langs) and
-                    (langs[1] not in excluded_langs)):
-                    utils.read_corpus(train_corpus, corpus_filepath, langs)
-                else:
-                    utils.read_corpus(test_corpus, corpus_filepath, langs)
+    print()
 
-    return train_corpus, test_corpus
+    end_date = datetime.datetime.now()
+    process_time = time.process_time()
 
-def produce_output(batch_size, 
-                   epochs_expected, 
-                   csc, 
-                   start_date, 
-                   end_date, 
-                   start_time, 
-                   end_time, 
-                   use_alphabets, 
-                   metrics):
+    experiment_parameters['epochs_run'] = csc.trained_epochs
+    experiment_parameters['start_date'] = str(start_date)
+    experiment_parameters['end_date'] = str(end_date)
+    experiment_parameters['total_time'] = str(process_time)
 
-    # Let's start with experiment parameters
-    experiment_output = "CSCLASSIFIER MODEL RESULTS:\n\n"
-    experiment_output += "MODEL INFORMATION: \n"
-    experiment_output += "{:<4}{:<22}{}\n".format("", "Batch-Size:", str(batch_size))
-    experiment_output += "{:<4}{:<22}{}\n".format("","Epochs Run:", 
-        str(csc.trained_epochs))
-    experiment_output += "{:<4}{:<22}{}\n".format("","Epochs Expected:", 
-        str(epochs_expected))
-    experiment_output += "{:<4}{:<22}{}\n".format("","Patience:",
-        str(csc.patience))
-    experiment_output += "{:<4}{:<22}{}\n".format("","Start Date:",
-        str(start_date))
-    experiment_output += "{:<4}{:<22}{}\n".format("","End Date:",
-        str(end_date))
-    experiment_output += "{:<4}{:<22}{}\n".format("","Start Time:",
-        str(start_time))
-    experiment_output += "{:<4}{:<22}{}\n".format("","End Time:",
-        str(end_time))
-    experiment_output += "{:<4}{:<22}{}\n".format("","Total Processing Time:",
-        str(end_time-start_time))
+    output_results(output_dirpath, 
+                   experiment_parameters, 
+                   model_parameters, 
+                   metrics,
+                   train_corpus, 
+                   test_corpus)
 
-    experiment_output += "\n"
+def output_results(output_dirpath,
+                   experiment_parameters, 
+                   model_parameters, 
+                   metrics,
+                   train_corpus, 
+                   test_corpus):
+    experiment_output = consolidate_output(experiment_parameters, 
+                                           model_parameters,
+                                           metrics,
+                                           train_corpus, 
+                                           test_corpus)
 
-    # Now let's add hyperparameters
-    experiment_output += "\tHyper-parameters:\n"
-    experiment_output += "\t\t{:<26}{}\n".format("CNN T1 Filter Dimensions:",
-        str(csc.classifier.n_1))  
-    experiment_output += "\t\t{:<26}{}\n".format("CNN T1 Kernel Size:",
-        str(csc.classifier.kernel_size))  
-    experiment_output += "\t\t{:<26}{}\n".format("CNN T2 Filter Dimensions:",
-        str(csc.classifier.n_2))  
-    experiment_output += "\t\t{:<26}{}\n".format("LSTM Dimensions:",
-        str(csc.classifier.lstm_dim))  
-    experiment_output += "\t\t{:<26}{}\n".format("Dropout Rate:",
-        str(csc.classifier.dropout_rate))  
-    experiment_output += "\t\t{:<26}{}\n".format("Loss Algorithm:",
-        str(csc.classifier.loss))  
-    experiment_output += "\t\t{:<26}{}\n".format("Loss Optimizer:",
-        str(csc.classifier.optimizer_name))  
-    experiment_output += "\t\t{:<26}{}\n".format("Learning Rate:",
-        str(csc.classifier.learning_rate))  
-    experiment_output += "\t\t{:<26}{}\n".format("Decay Rate:",
-        str(csc.classifier.decay))
-
-    experiment_output += "\n"
-
-    experiment_output += "{:<13}{}\n".format("Training on: ",str(csc.train_langs))
-    experiment_output += "{:<13}{}\n".format("Testing on: ",str(csc.test_langs))
-
-    experiment_output += "\n"
-
-    experiment_output += ("Unknown character vectors associated w/ alphabets: "
-        + str(use_alphabets) + "\n")
-
-    experiment_output += "\n"
-
-    experiment_output += "Results:\n"
-
-    experiment_output += "\n"
-
-    experiment_output += "{:<17}{:<14}{}\n".format("","Word-level","Sentence-level")
-    experiment_output += "{:<17}{:<14.8}{:.8}\n".format("Accuracy:",
-            metrics['word']['accuracy'],metrics['sentence']['accuracy'])
-
-    experiment_output += "{:<17}\n".format("Precision:")
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","PADDING",
-            metrics['word']['precision'][0], 
-            metrics['sentence']['precision'][0])
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","NON-CS",
-            metrics['word']['precision'][1], 
-            metrics['sentence']['precision'][1])
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","CS",
-            metrics['word']['precision'][2], 
-            metrics['sentence']['precision'][2])
-
-    experiment_output += "{:<17}\n".format("Recall:")
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","PADDING",
-            metrics['word']['recall'][0], 
-            metrics['sentence']['recall'][0])
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","NON-CS",
-            metrics['word']['recall'][1], 
-            metrics['sentence']['recall'][1])
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","CS",
-            metrics['word']['recall'][2], 
-            metrics['sentence']['recall'][2])
-
-    experiment_output += "{:<17}\n".format("F-Score:")
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","PADDING",
-            metrics['word']['fscore'][0], 
-            metrics['sentence']['fscore'][0])
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","NON-CS",
-            metrics['word']['fscore'][1], 
-            metrics['sentence']['fscore'][1])
-    experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","CS",
-            metrics['word']['fscore'][2], 
-            metrics['sentence']['fscore'][2])
-
-    experiment_output += "\n"
-    experiment_output += "CORPUS COMPOSITION:\n"
-    experiment_output += "\n"
-    experiment_output += "{:<24}{:<18}{}\n".format("", "Train/Dev", "Test")
-    experiment_output += "{:<24}{:<18,}{:<18,}\n".format(
-            "Total Sentences:", 
-            (len(csc.train_corpus.sentences)),
-            (len(csc.test_corpus.sentences)))
-    experiment_output += "{:<24}{:<10,}{:<8.2%}{:<10,}{:.2%}\n".format(
-            "Monolingual Sentences:",
-            (len(csc.train_corpus.sentences)-
-                csc.train_corpus.multilingual_sentence_count),
-            ((len(csc.train_corpus.sentences)-
-                csc.train_corpus.multilingual_sentence_count) 
-                / len(csc.train_corpus.sentences)),
-            (len(csc.test_corpus.sentences)-
-                csc.test_corpus.multilingual_sentence_count),
-            ((len(csc.test_corpus.sentences)-
-                csc.test_corpus.multilingual_sentence_count) 
-                / len(csc.test_corpus.sentences)))
-
-    experiment_output += "{:<24}{:<10,}{:<8.2%}{:<10,}{:.2%}\n".format(
-            "Multilingual Sentences:",
-            (csc.train_corpus.multilingual_sentence_count),
-            (csc.train_corpus.multilingual_sentence_count 
-                / len(csc.train_corpus.sentences)),
-            (csc.test_corpus.multilingual_sentence_count),
-            (csc.test_corpus.multilingual_sentence_count 
-                / len(csc.test_corpus.sentences)))
-
-    experiment_output += "\n"
-
-    experiment_output += "{:<46}{:<14,}{:<14,}\n".format(
-        "Total # of switches:", 
-        (csc.train_corpus.switch_count),
-        (csc.test_corpus.switch_count))
-
-
-    experiment_output += "{:<46}{:<14,.3}{:<14,.3}\n".format(
-        "Avg. # of switches per sentence:", 
-        (csc.train_corpus.switch_count / len(csc.train_corpus.sentences)),
-        (csc.test_corpus.switch_count / len(csc.test_corpus.sentences)))
-
-    experiment_output += "{:<46}{:<14,.3}{:<14,.3}\n".format(
-        "Avg. # of switches per multilingual sentence:", 
-        (csc.train_corpus.switch_count 
-            / csc.train_corpus.multilingual_sentence_count),
-        (csc.test_corpus.switch_count 
-            / csc.train_corpus.multilingual_sentence_count))
-
-    experiment_output += "\n"
-    experiment_output += "\n"
+    json_output_path = output_dirpath / 'results.json'
 
     print(experiment_output)
-    return experiment_output
+    with json_output_path.open('w') as json_output_file:
+        json.dump(experiment_output, json_output_file, indent=4, sort_keys=True)
 
+    txt_output_path = output_dirpath / 'results.txt'
+    with txt_output_path.open('w') as txt_output_file:
+        txt_output_file.write(print_output(experiment_output))
+    return json_output_path, txt_output_path
+
+def consolidate_output(experiment_parameters, 
+                       model_parameters, 
+                       metrics,
+                       train_corpus, 
+                       test_corpus):
+
+    output = {'experiment':experiment_parameters,
+              'model':model_parameters,
+              'metrics':metrics,
+              'corpora':extract_cscorpora_metrics(train_corpus, test_corpus)}
+    return output
+
+def extract_cscorpora_metrics(train_corpus, test_corpus):
+    return {'train':extract_cscorpus_metrics(train_corpus), 
+            'test':extract_cscorpus_metrics(test_corpus)}
+
+def extract_cscorpus_metrics(corpus):
+    corpus_metrics = {}
+    corpus_metrics['filenames'] = [str(filepath) for filepath in corpus.filepaths]
+    corpus_metrics['sentences'] = {}
+    corpus_metrics['sentences']['monolingual_sentences'] = (len(corpus.sentences) 
+                                               - len(corpus.multilingual_sentences))
+    corpus_metrics['sentences']['multilingual_sentences'] = len(corpus.multilingual_sentences)
+    corpus_metrics['cs_labels'] = corpus.cslabel_count
+    corpus_metrics['cs_types'] = corpus.cstype_count
+    corpus_metrics['labels'] = corpus.label_count
+    corpus_metrics['langs'] = corpus.lang_count
+    corpus_metrics['lang_pairs'] = corpus.lang_pair_count
+
+
+    #corpus_metrics['chars'] = corpus.char_count
+    
+    return corpus_metrics
+
+
+def print_output(experiment_output):
+
+    # Let's start with experiment parameters
+    str_experiment_output = "CSCLASSIFIER MODEL RESULTS:\n\n"
+    str_experiment_output += "EXPERIMENT INFORMATION: \n"
+    experiment_info = experiment_output['experiment']
+    str_experiment_output += "{:<4}{:<22}{:d}\n".format("", "Batch-Size:", experiment_info['batch_size'])
+    str_experiment_output += "{:<4}{:<22}{:d}\n".format("","Epochs Trained:", 
+        experiment_info['epochs_run'])
+    str_experiment_output += "{:<4}{:<22}{:d}\n".format("","Epochs Expected:", 
+        experiment_info['epochs_run'])
+    str_experiment_output += "{:<4}{:<22}{:d}\n".format("","Patience:",
+        experiment_info['patience'])
+    str_experiment_output += "{:<4}{:<22}{:s}\n".format("","Start Date:",
+        experiment_info['start_date'])
+    str_experiment_output += "{:<4}{:<22}{:s}\n".format("","End Date:",
+        experiment_info['end_date'])
+    str_experiment_output += "{:<4}{:<22}{:s}\n".format("","Total Processing Time:",
+        experiment_info['total_time'])
+
+    str_experiment_output += "\n"
+
+    # Now let's add hyperparameters
+    model_info = experiment_output['model']
+    str_experiment_output += "MODEL INFORMATION:\n"
+    str_experiment_output += "{:<8}{:<26}{:d}\n".format("","CNN T1 Filter Dimensions:",
+        model_info['n_1'])  
+    str_experiment_output += "{:<8}{:<26}{:d}\n".format("","CNN T1 Kernel Size:",
+        model_info['kernel_size'])  
+    str_experiment_output += "{:<8}{:<26}{:d}\n".format("","CNN T2 Filter Dimensions:",
+        model_info['n_2'])  
+    str_experiment_output += "{:<8}{:<26}{:d}\n".format("","LSTM Dimensions:",
+        model_info['lstm_dim'])  
+    str_experiment_output += "{:<8}{:<26}{:F}\n".format("","Dropout Rate:",
+        model_info['dropout_rate'])  
+    str_experiment_output += "{:<8}{:<26}{}\n".format("","Loss Algorithm:",
+        model_info['loss'])  
+    str_experiment_output += "{:<8}{:<26}{}\n".format("","Loss Optimizer:",
+        model_info['optimizer'])  
+    str_experiment_output += "{:<8}{:<26}{:F}\n".format("","Learning Rate:",
+        model_info['learning_rate'])  
+    str_experiment_output += "{:<8}{:<26}{:F}\n".format("","Decay Rate:",
+        model_info['decay'])
+
+    str_experiment_output += "\n"
+
+    train_corpus_info = experiment_output['corpora']['train']
+    test_corpus_info = experiment_output['corpora']['test']
+ 
+    str_experiment_output += "Training on: \n"
+    str_experiment_output += train_corpus_info['filenames'][0]
+    for filename in train_corpus_info['filenames'][1:]:
+        str_experiment_output += ", " + filename
+    str_experiment_output += "\n"
+
+    for lang in list(train_corpus_info['lang_pairs'].keys())[:-1]:
+        str_experiment_output += "{:<4}{:s}, ".format("", lang)
+    str_experiment_output += "{:s}, ".format(list(train_corpus_info['lang_pairs'].keys())[-1])
+
+    str_experiment_output += "\n"
+
+
+    str_experiment_output += "Testing on: \n"
+    str_experiment_output += test_corpus_info['filenames'][0]
+    for filename in test_corpus_info['filenames'][1:]:
+        str_experiment_output += ", " + filename
+    str_experiment_output += "\n"
+    for lang in list(test_corpus_info['lang_pairs'].keys())[:-1]:
+        str_experiment_output += "{:<4}{:s}, ".format("", lang)
+    str_experiment_output += "{:s}, ".format(list(test_corpus_info['lang_pairs'].keys())[-1])
+
+    str_experiment_output += "\n"
+
+    str_experiment_output += ("Unknown character vectors associated w/ alphabets: "
+        + str(experiment_info['use_alphabets']) + "\n")
+
+    str_experiment_output += "\n"
+
+    str_experiment_output += "EXPERIMENT RESULTS:\n"
+
+    str_experiment_output += "\n"
+
+    metric_info = experiment_output['metrics']
+    str_experiment_output += "{:<17}{:<14}{}\n".format("","Word-level","Sentence-level")
+    str_experiment_output += "{:<17}{:<14.8}{:.8}\n".format("Accuracy:",
+            metric_info['word']['accuracy'],metric_info['sentence']['accuracy'])
+
+    str_experiment_output += "{:<17}\n".format("Precision:")
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","PADDING",
+            metric_info['word']['precision'][0], 
+            metric_info['sentence']['precision'][0])
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","NON-CS",
+            metric_info['word']['precision'][1], 
+            metric_info['sentence']['precision'][1])
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","CS",
+            metric_info['word']['precision'][2], 
+            metric_info['sentence']['precision'][2])
+
+    str_experiment_output += "{:<17}\n".format("Recall:")
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","PADDING",
+            metric_info['word']['recall'][0], 
+            metric_info['sentence']['recall'][0])
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","NON-CS",
+            metric_info['word']['recall'][1], 
+            metric_info['sentence']['recall'][1])
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","CS",
+            metric_info['word']['recall'][2], 
+            metric_info['sentence']['recall'][2])
+
+    str_experiment_output += "{:<17}\n".format("F-Score:")
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","PADDING",
+            metric_info['word']['fscore'][0], 
+            metric_info['sentence']['fscore'][0])
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","NON-CS",
+            metric_info['word']['fscore'][1], 
+            metric_info['sentence']['fscore'][1])
+    str_experiment_output += "{:<4}{:<13}{:<14.8}{:.8}\n".format("","CS",
+            metric_info['word']['fscore'][2], 
+            metric_info['sentence']['fscore'][2])
+
+    str_experiment_output += "\n"
+    str_experiment_output += "CORPUS COMPOSITION:\n"
+    str_experiment_output += "\n"
+    str_experiment_output += "{:<24}{:<18}{}\n".format("", "Train/Dev", "Test")
+
+    train_sentence_count = sum([count 
+                                for count in train_corpus_info['sentences'].values()])
+    test_sentence_count = sum([count 
+                               for count in test_corpus_info['sentences'].values()])
+    print(train_sentence_count)
+    print(test_sentence_count)
+    str_experiment_output += "{:<24}{:<18,}{:<18,}\n".format(
+            "Total Tokens:", 
+            sum(train_corpus_info['labels'].values()),
+            sum(test_corpus_info['labels'].values()))
+
+    str_experiment_output += "{:<24}{:<18,}{:<18,}\n".format(
+            "Total Sentences:", 
+            train_sentence_count,
+            test_sentence_count)
+    str_experiment_output += "{:<24}{:<10,}{:<8.2%}{:<10,}{:8.2%}\n".format(
+            "Monolingual Sentences:",
+            train_corpus_info['sentences']['monolingual_sentences'],
+            train_corpus_info['sentences']['monolingual_sentences'] / train_sentence_count,
+            test_corpus_info['sentences']['monolingual_sentences'],
+            test_corpus_info['sentences']['monolingual_sentences'] / test_sentence_count)
+
+    str_experiment_output += "{:<24}{:<10,}{:<8.2%}{:<10,}{:8.2%}\n".format(
+            "Multilingual Sentences:",
+            train_corpus_info['sentences']['multilingual_sentences'],
+            train_corpus_info['sentences']['multilingual_sentences'] / train_sentence_count,
+            test_corpus_info['sentences']['multilingual_sentences'],
+            test_corpus_info['sentences']['multilingual_sentences'] / test_sentence_count)
+
+    str_experiment_output += "\n"
+
+    str_experiment_output += "{:<46}{:<14,}{:<14,}\n".format(
+        "Total # of switches:", 
+        (train_corpus_info['cs_labels']['cs']),
+        (test_corpus_info['cs_labels']['cs']))
+
+    str_experiment_output += "{:<46}{:<14,.3}{:<14,.3}\n".format(
+        "Avg. # of switches per sentence:", 
+        (train_corpus_info['cs_labels']['cs'] 
+         / train_sentence_count),
+        (test_corpus_info['cs_labels']['cs'] 
+         / test_sentence_count))
+
+    str_experiment_output += "{:<46}{:<14,.3}{:<14,.3}\n".format(
+        "Avg. # of switches per multilingual sentence:", 
+        (train_corpus_info['cs_labels']['cs'] 
+         / train_corpus_info['sentences']['multilingual_sentences']),
+        (test_corpus_info['cs_labels']['cs'] 
+         / test_corpus_info['sentences']['multilingual_sentences']))
+
+    str_experiment_output += "\n"
+
+    str_experiment_output += "Code Switch Types:\n"
+
+    cs_types = sorted(list(set(list(train_corpus_info['cs_types'].keys())
+                               + list(test_corpus_info['cs_types'].keys()))), 
+                      key=lambda cs_type:(len(cs_type), cs_type))
+    for cs_type in cs_types:
+        str_experiment_output += "{:^4}{:<20}{:<10,}{:<8.2%}{:<10,}{:8.2%}\n".format(
+                "",
+                cs_type,
+                train_corpus_info['cs_types'][cs_type] 
+                if cs_type in train_corpus_info['cs_types']
+                else 0,
+                train_corpus_info['cs_types'][cs_type] / train_corpus_info['cs_labels']['cs']
+                if cs_type in train_corpus_info['cs_types']
+                else 0,
+                test_corpus_info['cs_types'][cs_type] 
+                if cs_type in test_corpus_info['cs_types']
+                else 0,
+                test_corpus_info['cs_types'][cs_type] / test_corpus_info['cs_labels']['cs']
+                if cs_type in test_corpus_info['cs_types']
+                else 0)
+    
+    str_experiment_output += "\n"
+
+    str_experiment_output += "Token Types:\n"
+
+    labels = sorted(list(set(list(train_corpus_info['labels'].keys()) 
+                      + list(test_corpus_info['labels'].keys()))))
+    for label in labels:
+        str_experiment_output += "{:^4}{:<20}{:<10,}{:<8.2%}{:<10,}{:8.2%}\n".format(
+                "",
+                label,
+                train_corpus_info['labels'][label] 
+                if label in train_corpus_info['labels']
+                else 0,
+                train_corpus_info['labels'][label] / sum(train_corpus_info['labels'].values())
+                if label in train_corpus_info['labels']
+                else 0,
+                test_corpus_info['labels'][label] 
+                if label in test_corpus_info['labels']
+                else 0,
+                test_corpus_info['labels'][label] / sum(test_corpus_info['labels'].values())
+                if label in test_corpus_info['labels']
+                else 0)
+
+    str_experiment_output += "\n"
+
+    str_experiment_output += "Language Types:\n"
+
+    langs = sorted(list(set(list(train_corpus_info['langs'].keys())
+                + list(test_corpus_info['langs'].keys()))))
+
+    for lang in langs:
+        str_experiment_output += "{:^4}{:<20}{:<10,}{:<8.2%}{:<10,}{:8.2%}\n".format(
+                "",
+                lang,
+                train_corpus_info['langs'][lang] 
+                if lang in train_corpus_info['langs']
+                else 0,
+                train_corpus_info['langs'][lang] / sum(train_corpus_info['langs'].values())
+                if lang in train_corpus_info['langs']
+                else 0,
+                test_corpus_info['langs'][lang] 
+                if lang in test_corpus_info['langs']
+                else 0,
+                test_corpus_info['langs'][lang] / sum(test_corpus_info['langs'].values())
+                if lang in test_corpus_info['langs']
+                else 0)
+
+    str_experiment_output += "\n"
+
+    str_experiment_output += "Language Pairs:\n"
+    lang_pairs = set(list(train_corpus_info['lang_pairs'].keys())
+                     + list(test_corpus_info['lang_pairs'].keys()))
+    for lang_pair in lang_pairs:
+        str_experiment_output += "{:^4}{:<20}{:<10,}{:<8.2%}{:<10,}{:8.2%}\n".format(
+                "",
+                lang_pair,
+                train_corpus_info['lang_pairs'][lang_pair] 
+                if lang_pair in train_corpus_info['lang_pairs']
+                else 0,
+                train_corpus_info['lang_pairs'][lang_pair] / sum(train_corpus_info['lang_pairs'].values())
+                if lang_pair in train_corpus_info['lang_pairs']
+                else 0,
+                test_corpus_info['lang_pairs'][lang_pair] 
+                if lang_pair in test_corpus_info['lang_pairs']
+                else 0,
+                test_corpus_info['lang_pairs'][lang_pair] / sum(test_corpus_info['lang_pairs'].values())
+                if lang_pair in test_corpus_info['lang_pairs']
+                else 0)
+
+    print(str_experiment_output)
+    return str_experiment_output
+
+def create_corpora(corpora_dirpath):
+    train_corpus, test_corpus = CorpusCSLangs(), CorpusCSLangs()
+    train_corpus.ingest_corpus(corpora_dirpath / CORPUS_FILENAMES['train'])
+    test_corpus.ingest_corpus(corpora_dirpath / CORPUS_FILENAMES['test'])
+    return train_corpus, test_corpus
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A neural network based'
-        + 'classifier for detecting code switching.') 
-    parser.add_argument('corpora_dir', metavar='C', type=str,
+    parser = argparse.ArgumentParser(description='Create and evaluate a neural'
+        + 'network based classifier for detecting code switching.') 
+    parser.add_argument('corpora_dirpath', metavar='C', type=Path,
             help='Filepath to the corpora.')
-    parser.add_argument('-o', '--output_dir', metavar='O', type=str,
+    parser.add_argument('-o', '--output_dir', metavar='O', type=Path,
             help='Directory to store checkpoint and model files')
-    parser.add_argument('-x', '--excluded_langs', metavar='X', type=str,
-            help='Language pairs to be excluded from training and instead'
-                + 'tested on, using the form "<la>+<la>"')
     parser.add_argument('-a', '--use_alphabets', action='store_true',
             help="Whether to use alphabetically based unknown character"
                 + " vectors.")
-    parser.add_argument('-p', '--prefix', metavar='P', type=str,
-            help='Corpus filename prefix')
     parser.add_argument('-e', '--epochs', metavar='E', type=int,
             help='Number of epochs to train')
+    parser.add_argument('-b', '--batch_size', metavar='B', type=int,
+            help='Size of batches on which to update gradient')
     parser.add_argument('-t', '--patience', metavar='T', type=int,
             help='Number of epochs to wait for improvement')
 
@@ -294,19 +449,16 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main_args = {}
-    main_args['corpora_dirpath'] = Path(args.corpora_dir)
+    main_args['corpora_dirpath'] = args.corpora_dirpath
     if args.output_dir:
-        main_args['output_dirpath'] = Path(args.output_dir)
-    if args.excluded_langs:
-        main_args['excluded_langs'] = set(args.excluded_corpus.split('+'))
+        main_args['output_dirpath'] = args.output_dir
     if args.use_alphabets:
        main_args['use_alphabets'] = args.use_alphabets
-    if args.prefix:
-        main_args['corpus_filename_prefix'] = args.prefix
     if args.epochs:
         main_args['epochs'] = args.epochs
+    if args.batch_size:
+        main_args['batch_size'] = args.batch_size
     if args.patience:
         main_args['patience'] = args.patience
        
-    main(**main_args)
-
+    run(**main_args)
