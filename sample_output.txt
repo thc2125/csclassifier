@@ -1,0 +1,78 @@
+CSCLASSIFIER MODEL RESULTS:
+
+Model: 
+    Batch-Size:
+    Epochs Run:
+    Epochs Expected:
+    Patience: 
+    Start Date:
+    End Date:
+    Start Time:
+    End Time:
+    Total Processing Time:
+    
+    Hyper-parameters:
+        CNN T1 Filter Dimensions: [#]
+        CNN T1 Kernel Size:       [#]
+        CNN T2 Filter Dimensions: [#]
+        LSTM Dimensions:          [#]
+        Dropout Rate:             [#]
+        Loss Algorithm:           [#]
+        Loss Optimizer:           [#]
+        Learning Rate:            [#]
+        Decay Rate:               [#]
+
+Training on: [list of language pairs]
+Testing on: [list of language pairs]
+
+Unknown character vectors associated w/ alphabets: [true or false]
+
+Results:                         
+
+                                              Word-level        Sentence-level
+Accuracy:                                     [#]               [#]
+Precision:      
+    PADDING                                   [#]               [#] 
+    NON-CS                                    [#]               [#]
+    CS                                        [#]               [#]
+Recall:                                       [#]               [#]
+    PADDING                                   [#]               [#] 
+    NON-CS                                    [#]               [#]
+    CS                                        [#]               [#]
+F-Score:                                      [#]               [#]
+    PADDING                                   [#]               [#] 
+    NON-CS                                    [#]               [#]
+    CS                                        [#]               [#]
+
+
+Corpus Composition:                           Train/Dev         Test
+
+Total sentences:                              [###,###]         [###,###] 
+Monolingual sentences:                        [###,###] [%]%    [###,###] [%%]%
+Multilingual sentences:                       [###,###] [%]%    [###,###] [%%]%
+
+                                             
+Total # of switches:                          [#]               [#]
+Avg. # of switches per sentence:              [#]               [#]
+Avg. # of switches per multilingual sentence: [#]               [#]
+
+
+Code Switch Types:                            
+    LANG1 to LANG2                            [#]  [%]%         [#]  [%]%
+    LANG2 to LANG1                            [#]  [%]%         [#]  [%]%
+    LANG1 PUNCT* to LANG2                     [#]  [%]%         [#]  [%]%
+    LANG2 PUNCT* to LANG1                     [#]  [%]%         [#]  [%]%
+    LANG1 OTHER* to LANG2                     [#]  [%]%         [#]  [%]%
+    LANG2 OTHER* to LANG1                     [#]  [%]%         [#]  [%]%
+
+  
+Token Types:  
+    LANG1                                     [#] [%]%          [#] [%]%
+    LANG2                                     [#] [%]%          [#] [%]%
+    OTHER                                     [#] [%]%          [#] [%]%
+    PUNCT                                     [#] [%]%          [#] [%]%
+
+    Language:
+    ar                                        [#] [%]%          [#] [%]%
+    de                                        [#] [%]%          [#] [%]%
+    ...
