@@ -29,52 +29,50 @@ Unknown character vectors associated w/ alphabets: [true or false]
 
 Results:                         
 
-                 Word-level    Sentence-level
-Accuracy:        [#]           [#]
+                                              Word-level        Sentence-level
+Accuracy:                                     [#]               [#]
 Precision:      
-    PADDING      [#]           [#] 
-    NON-CS       [#]           [#]
-    CS           [#]           [#]
-Recall:          [#]           [#]
-    PADDING      [#]           [#] 
-    NON-CS       [#]           [#]
-    CS           [#]           [#]
-F-Score:         [#]           [#]
-    PADDING      [#]           [#] 
-    NON-CS       [#]           [#]
-    CS           [#]           [#]
-
-Corpus Composition:
-
-                        Train/Dev         Test
-Total sentences:        [###,###]         [###,###] [%%]%
-Monolingual sentences:  [###,###] [%]%    [###,###] [%%]%
-Multilingual sentences: [###,###] [%]%    [###,###] [%%]%
-
-                                              Train/Dev    Test
-Total # of switches:                          [#]          [#]
-Avg. # of switches per sentence:              [#]          [#]
-Avg. # of switches per multilingual sentence: [#]          [#]
+    PADDING                                   [#]               [#] 
+    NON-CS                                    [#]               [#]
+    CS                                        [#]               [#]
+Recall:                                       [#]               [#]
+    PADDING                                   [#]               [#] 
+    NON-CS                                    [#]               [#]
+    CS                                        [#]               [#]
+F-Score:                                      [#]               [#]
+    PADDING                                   [#]               [#] 
+    NON-CS                                    [#]               [#]
+    CS                                        [#]               [#]
 
 
-Code Switch Types:               Train/Dev    Test
-    LANG1 to LANG2               [#]  [%]%    [#]  [%]%
-    LANG2 to LANG1               [#]  [%]%    [#]  [%]%
-    LANG1 PUNCT* to LANG2        [#]  [%]%    [#]  [%]%
-    LANG2 PUNCT* to LANG1        [#]  [%]%    [#]  [%]%
-    LANG1 OTHER* to LANG2        [#]  [%]%    [#]  [%]%
-    LANG2 OTHER* to LANG1        [#]  [%]%    [#]  [%]%
+Corpus Composition:                           Train/Dev         Test
+
+Total sentences:                              [###,###]         [###,###] 
+Monolingual sentences:                        [###,###] [%]%    [###,###] [%%]%
+Multilingual sentences:                       [###,###] [%]%    [###,###] [%%]%
+
+                                             
+Total # of switches:                          [#]               [#]
+Avg. # of switches per sentence:              [#]               [#]
+Avg. # of switches per multilingual sentence: [#]               [#]
+
+
+Code Switch Types:                            
+    LANG1 to LANG2                            [#]  [%]%         [#]  [%]%
+    LANG2 to LANG1                            [#]  [%]%         [#]  [%]%
+    LANG1 PUNCT* to LANG2                     [#]  [%]%         [#]  [%]%
+    LANG2 PUNCT* to LANG1                     [#]  [%]%         [#]  [%]%
+    LANG1 OTHER* to LANG2                     [#]  [%]%         [#]  [%]%
+    LANG2 OTHER* to LANG1                     [#]  [%]%         [#]  [%]%
 
   
-    Token Types:  
-        LANG1        [#] [%]%     [#] [%]%
-        LANG2        [#] [%]%     [#] [%]%
-        OTHER        [#] [%]%     [#] [%]%
-        PUNCT        [#] [%]%     [#] [%]%
+Token Types:  
+    LANG1                                     [#] [%]%          [#] [%]%
+    LANG2                                     [#] [%]%          [#] [%]%
+    OTHER                                     [#] [%]%          [#] [%]%
+    PUNCT                                     [#] [%]%          [#] [%]%
 
     Language:
-        ar           [#] [%]%     [#] [%]%
-        de           [#] [%]%     [#] [%]%
-        ...
-
-
+    ar                                        [#] [%]%          [#] [%]%
+    de                                        [#] [%]%          [#] [%]%
+    ...
