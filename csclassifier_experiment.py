@@ -28,13 +28,20 @@ from csclassifier import CSClassifier
 CORPUS_FILENAMES = {'train' : 'train_corpus.tsv', 'test' : 'test_corpus.tsv'}
 
 def run(corpora_dirpath, 
-        output_dirpath=Path('.'), 
+        output_dirpath=Path('exp' 
+                            + "_".join(
+                                str(datetime.datetime.utcnow()).replace(
+                                    ':','_').replace(
+                                    '.','_').split())),
         excluded_langs=None, 
         use_alphabets=False, 
         epochs=50, 
         batch_size=25, 
         patience=2,
         model_parameters=classifier.DEFAULT_HYPER_PARAMETERS):
+
+    if not output_dirpath.exists():
+        output_dirpath.mkdir(parents=True)
 
     experiment_parameters = {'use_alphabets':use_alphabets,
                              'epochs':epochs,
