@@ -92,7 +92,7 @@ def compute_accuracy_metrics(y_test, y_pred, list_tags):
 
         for i in range(len(y_test[seq_idx])):
             pos_test = y_test[seq_idx][i]
-            if pos_test != list_tags['<PAD>']:
+            if pos_test != list_tags['<pad>']:
                 pos_pred = y_pred[seq_idx][i]
                 num_tokens += 1
                 if pos_test == pos_pred:
@@ -124,11 +124,31 @@ def compute_accuracy_metrics(y_test, y_pred, list_tags):
 
     results = dict()
     results['accuracy'] = accuracy
-    results['confusion_matrix'] = confusion_matrix
-    results['precision'] = precision
-    results['recall'] = recall
-    results['fscore'] = fscore
+    results['confusion_matrix'] = confusion_matrix.tolist()
+    results['precision'] = precision.tolist()
+    results['recall'] = recall.tolist()
+    results['fscore'] = fscore.tolist()
     return results
 
 def get_sentence_id(word_id):
     return "_".join(word_id.split(sep='_')[:-1])
+
+def get_label_dicts(labels):
+    idx2label = ['<pad>'] + labels
+    label2idx = {idx2label[i] : i for i in range(len(idx2label))}
+    return idx2label, label2idx
+
+def get_char_dicts(chars, use_alphabets):
+    idx2char = ['<pad>'] + chars
+
+    if use_alphabets:
+        # Add indices for unseen chars for each alphabet representable 
+        # by unicode
+        for a in alphabets:
+            idx2char.append('<unk' + a + '>')
+    # Finally add a generic unknown character
+    idx2char.append('<unk>')
+
+    char2idx = {idx2char[i] : i for i in range(len(idx2char))}
+
+    return idx2char, char2idx
