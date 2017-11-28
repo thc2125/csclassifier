@@ -28,6 +28,7 @@ from csclassifier import CSClassifier
 CORPUS_FILENAMES = {'train' : 'train_corpus.tsv', 'test' : 'test_corpus.tsv'}
 
 def run(corpora_dirpath, 
+        model_path=None,
         output_dirpath=Path('exp' 
                             + "_".join(
                                 str(datetime.datetime.utcnow()).replace(
@@ -59,11 +60,19 @@ def run(corpora_dirpath,
     maxwordlen = max(train_corpus.maxwordlen, test_corpus.maxwordlen)
 
     chars = train_corpus.get_chars()
-    csc = CSClassifier(chars, maxsentlen, maxwordlen, use_alphabets, model_parameters)
+    csc = CSClassifier(chars, 
+                       maxsentlen, 
+                       maxwordlen, 
+                       use_alphabets, 
+                       model_parameters, 
+                       model_path)
 
     print()
-
-    print("Beginning Training.") 
+    print("Date and time: " + str(start_date))
+    print("Training on corpus file " + str(train_corpus.filepaths))
+    print("Testing on corpus file " + str(test_corpus.filepaths))
+    print("Using unknown characters based on alphabets: " + str(use_alphabets))
+    print("Beginning Training.")
 
     print()
        
@@ -440,6 +449,8 @@ if __name__ == '__main__':
         + 'network based classifier for detecting code switching.') 
     parser.add_argument('corpora_dirpath', metavar='C', type=Path,
             help='Filepath to the corpora.')
+    parser.add_argument('-m', '--model_path', metavar='M', type=Path, 
+            help='A pre-existing model to train.')
     parser.add_argument('-o', '--output_dir', metavar='O', type=Path,
             help='Directory to store checkpoint and model files')
     parser.add_argument('-a', '--use_alphabets', action='store_true',
@@ -457,6 +468,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main_args = {}
     main_args['corpora_dirpath'] = args.corpora_dirpath
+    if args.model_path:
+        main_args['model_path'] = args.model_path
     if args.output_dir:
         main_args['output_dirpath'] = args.output_dir
     if args.use_alphabets:
