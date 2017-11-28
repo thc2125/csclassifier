@@ -37,7 +37,7 @@ class Classifier:
                  maxwordlen, 
                  use_alphabets=False,
                  hyper_parameters=DEFAULT_HYPER_PARAMETERS,
-                 model=None):
+                 model_path=None):
 
         self.idx2char, self.char2idx = utils.get_char_dicts(chars, use_alphabets)
         self.idx2label, self.label2idx = utils.get_label_dicts(labels)
@@ -47,8 +47,8 @@ class Classifier:
 
         self.use_alphabets = use_alphabets
 
-        if model:
-            self.model = self._load_model(model)
+        if model_path:
+            self.model = self._load_model(str(model_path))
 
         else:
             self._generate_model(**hyper_parameters)
@@ -261,8 +261,8 @@ class Classifier:
         metrics['word'] = (utils.compute_accuracy_metrics(
             test_cat_labels, pred_cat_labels, self.label2idx))
 
-        test_sent_cat_labels = np.argmax(test_labels, axis=2)
-        pred_sent_cat_labels = np.argmax(pred_labels, axis=2)
+        test_sent_cat_labels = np.amax(test_labels, axis=1)
+        pred_sent_cat_labels = np.amax(pred_labels, axis=1)
 
         metrics['sentence'] = (utils.compute_accuracy_metrics(
             test_sent_cat_labels, pred_sent_cat_labels, self.label2idx))
