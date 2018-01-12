@@ -85,6 +85,10 @@ def compute_accuracy_metrics(y_test, y_pred, list_tags):
     false_pos = np.zeros(tagset_size)
     false_neg = np.zeros(tagset_size)
 
+    print('\n' + np.array_str(y_test))
+
+    print(np.array_str(y_pred) + '\n')
+
     for seq_idx in range(len(y_test)):
         if len(y_test[seq_idx]) != len(y_pred[seq_idx]):
             raise Exception("Test and Pred tokens have different lengths:" + str(len(y_test[seq_idx])) + " " + str(
@@ -92,16 +96,15 @@ def compute_accuracy_metrics(y_test, y_pred, list_tags):
 
         for i in range(len(y_test[seq_idx])):
             pos_test = y_test[seq_idx][i]
-            if pos_test != list_tags['<pad>']:
-                pos_pred = y_pred[seq_idx][i]
-                num_tokens += 1
-                if pos_test == pos_pred:
-                    num_eq += 1
-                    true_pos[pos_test] += 1
-                else:
-                    false_neg[pos_test] += 1
-                    false_pos[pos_pred] += 1
-                confusion_matrix[pos_test, pos_pred] += 1
+            pos_pred = y_pred[seq_idx][i]
+            num_tokens += 1
+            if pos_test == pos_pred:
+                num_eq += 1
+                true_pos[pos_test] += 1
+            else:
+                false_neg[pos_test] += 1
+                false_pos[pos_pred] += 1
+            confusion_matrix[pos_test, pos_pred] += 1
 
     accuracy = num_eq * 1.0 / num_tokens
 

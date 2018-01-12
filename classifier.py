@@ -48,7 +48,7 @@ class Classifier:
         self.use_alphabets = use_alphabets
 
         if model_path:
-            self.model = self._load_model(str(model_path))
+            self._load_model(str(model_path))
 
         else:
             self._generate_model(**hyper_parameters)
@@ -261,13 +261,25 @@ class Classifier:
         metrics['word'] = (utils.compute_accuracy_metrics(
             test_cat_labels, pred_cat_labels, self.label2idx))
 
+        metrics['sentence'] = (utils.compute_accuracy_metrics(
+            test_cat_labels, pred_cat_labels, self.label2idx))
+        '''
         test_sent_cat_labels = np.amax(test_labels, axis=1)
         pred_sent_cat_labels = np.amax(pred_labels, axis=1)
 
         metrics['sentence'] = (utils.compute_accuracy_metrics(
             test_sent_cat_labels, pred_sent_cat_labels, self.label2idx))
-
+        '''
         return metrics 
+
+    def predict(self, sentence):
+        # TODO: Check sentence and word length
+        np_sentence = np.array(corpus_utils.sent_idx_conversion([sentence], 
+                                            self.maxsentlen,
+                                            self.maxwordlen,
+                                            self.char2idx))
+        np_predict = self.model.predict_classes(np_sentence)
+        return np_predict
 
     def _get_corpus_labels(self, corpus):
         return corpus.slabels
